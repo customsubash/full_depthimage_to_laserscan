@@ -59,7 +59,7 @@ bool DepthImageToLaserScan::use_point_old(const float new_value, const float old
   
   // Infs are preferable over NaNs (more information)
   if(!new_finite && !old_finite){ // Both are not NaN or Inf.
-    if(!isnan(new_value)){ // new is not NaN, so use it's +-Inf value.
+    if(!std::isnan(new_value)){ // new is not NaN, so use it's +-Inf value.
       return true;
     }
     return false; // Do not replace old_value
@@ -81,7 +81,7 @@ bool DepthImageToLaserScan::use_point_old(const float new_value, const float old
 }
 
 bool DepthImageToLaserScan::use_point_new(const float new_value, const float old_value, const float range_min, const float range_max) const{  
-  
+  return true;
   
 }
 

@@ -233,7 +233,8 @@ namespace depthimage_to_laserscan
       int offset = (int)(cam_model.cy()-scan_height/2);
       depth_row += offset*row_step; // Offset to center of image
       
-      uint32_t ranges_size = depth_msg->width;
+      
+      int ranges_size = depth_msg->width;
       
       std::vector<float> range_ratios(ranges_size);
       //precomputation, only redo if camera matrix changes
@@ -270,16 +271,17 @@ namespace depthimage_to_laserscan
         }
       }
       
-      for(int i = 0; i < ranges_size; ++i)
+      for(int u = 0; u < ranges_size; ++u)
       {
-        T depth = min_depths[i];
-        float range = range_ratios[i]*depth;
+        T depth = min_depths[u];
+        float range = range_ratios[u]*depth;
         
         
         double r = depth; // Assign to pass through NaNs and Infs
-        double th = -atan2((double)(i - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+        double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
         
+        /*
         if (depthimage_to_laserscan::DepthTraits<T>::valid(depth))
         { // Not NaN or Inf
           // Calculate in XYZ
@@ -289,6 +291,7 @@ namespace depthimage_to_laserscan
           // Calculate actual distance
           range = sqrt(pow(x, 2.0) + pow(z, 2.0));
         }
+        */
         
         if(range < scan_msg->range_max)
         {

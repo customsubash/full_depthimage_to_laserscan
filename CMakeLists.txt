@@ -19,6 +19,8 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(DepthImageToLaserScan src/DepthImageToLaserScan.cpp)
 target_link_libraries(DepthImageToLaserScan ${catkin_LIBRARIES})
+target_compile_options(DepthImageToLaserScan PRIVATE -g -std=c++11 -Wall -fopt-info-vec-optimized-missed -ftree-vectorize -funsafe-math-optimizations)
+
 
 add_library(DepthImageToLaserScanROS src/DepthImageToLaserScanROS.cpp)
 add_dependencies(DepthImageToLaserScanROS ${PROJECT_NAME}_gencfg)
