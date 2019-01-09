@@ -43,6 +43,11 @@ DepthImageToLaserScanROS::DepthImageToLaserScanROS(ros::NodeHandle& n, ros::Node
   f = boost::bind(&DepthImageToLaserScanROS::reconfigureCb, this, _1, _2);
   srv_.setCallback(f);
   
+  approach_=0;
+  pnh_.getParam("approach", approach_);
+  ROS_INFO_STREAM("Approach: " << approach_);
+  
+  
   // Lazy subscription to depth image topic
   pub_ = n.advertise<sensor_msgs::LaserScan>("scan", 10, boost::bind(&DepthImageToLaserScanROS::connectCb, this, _1), boost::bind(&DepthImageToLaserScanROS::disconnectCb, this, _1));
 }
@@ -57,7 +62,7 @@ void DepthImageToLaserScanROS::depthCb(const sensor_msgs::ImageConstPtr& depth_m
 	      const sensor_msgs::CameraInfoConstPtr& info_msg){
   try
   {
-    sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg);
+    sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg, approach_);
     pub_.publish(scan_msg);
   }
   catch (std::runtime_error& e)

@@ -52,7 +52,7 @@ double DepthImageToLaserScan::angle_between_rays(const cv::Point3d& ray1, const 
   return acos(dot_product / (magnitude1 * magnitude2));
 }
 
-bool DepthImageToLaserScan::use_point(const float new_value, const float old_value, const float range_min, const float range_max) const{  
+bool DepthImageToLaserScan::use_point_old(const float new_value, const float old_value, const float range_min, const float range_max) const{  
   // Check for NaNs and Infs, a real number within our limits is more desirable than these.
   bool new_finite = std::isfinite(new_value);
   bool old_finite = std::isfinite(old_value);
@@ -80,8 +80,13 @@ bool DepthImageToLaserScan::use_point(const float new_value, const float old_val
   return shorter_check;
 }
 
+bool DepthImageToLaserScan::use_point_new(const float new_value, const float old_value, const float range_min, const float range_max) const{  
+  
+  
+}
+
 sensor_msgs::LaserScanPtr DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-	      const sensor_msgs::CameraInfoConstPtr& info_msg){
+	      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach){
   // Set camera model
   cam_model_.fromCameraInfo(info_msg);
   
@@ -126,19 +131,40 @@ sensor_msgs::LaserScanPtr DepthImageToLaserScan::convert_msg(const sensor_msgs::
   uint32_t ranges_size = depth_msg->width;
   scan_msg->ranges.assign(ranges_size, std::numeric_limits<float>::quiet_NaN());
   
-  if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+  
+  if(approach==0)
   {
-    convert<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_);
+    if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+    {
+      convert_old<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_);
+    }
+    else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+    {
+      convert_old<float>(depth_msg, cam_model_, scan_msg, scan_height_);
+    }
+    else
+    {
+      std::stringstream ss;
+      ss << "Depth image has unsupported encoding: " << depth_msg->encoding;
+      throw std::runtime_error(ss.str());
+    }
   }
-  else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+  else if(approach==1)
   {
-    convert<float>(depth_msg, cam_model_, scan_msg, scan_height_);
-  }
-  else
-  {
-    std::stringstream ss;
-    ss << "Depth image has unsupported encoding: " << depth_msg->encoding;
-    throw std::runtime_error(ss.str());
+    if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+    {
+      convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_);
+    }
+    else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+    {
+      convert_new<float>(depth_msg, cam_model_, scan_msg, scan_height_);
+    }
+    else
+    {
+      std::stringstream ss;
+      ss << "Depth image has unsupported encoding: " << depth_msg->encoding;
+      throw std::runtime_error(ss.str());
+    }
   }
   
   return scan_msg;

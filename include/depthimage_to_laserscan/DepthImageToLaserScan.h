@@ -64,7 +64,7 @@ namespace depthimage_to_laserscan
      * 
      */
     sensor_msgs::LaserScanPtr convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-					   const sensor_msgs::CameraInfoConstPtr& info_msg);
+					   const sensor_msgs::CameraInfoConstPtr& info_msg, int approach);
     
     /**
      * Sets the scan time parameter.
@@ -151,8 +151,9 @@ namespace depthimage_to_laserscan
      * @return If true, insert new_value into the output LaserScan.
      * 
      */
-    bool use_point(const float new_value, const float old_value, const float range_min, const float range_max) const;
-
+    bool use_point_old(const float new_value, const float old_value, const float range_min, const float range_max) const;
+    bool use_point_new(const float new_value, const float old_value, const float range_min, const float range_max) const;
+    
     /**
     * Converts the depth image to a laserscan using the DepthTraits to assist.
     * 
@@ -167,8 +168,9 @@ namespace depthimage_to_laserscan
     * 
     */
     template<typename T>
-    void convert(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
-		 const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const{
+    void convert_old(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
+		 const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
+    {
       // Use correct principal point from calibration
       float center_x = cam_model.cx();
       float center_y = cam_model.cy();
@@ -184,30 +186,102 @@ namespace depthimage_to_laserscan
       int offset = (int)(cam_model.cy()-scan_height/2);
       depth_row += offset*row_step; // Offset to center of image
 
-      for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step){
-		for (int u = 0; u < (int)depth_msg->width; u++) // Loop over each pixel in row
-		{	
-		  T depth = depth_row[u];
-		  
-		  double r = depth; // Assign to pass through NaNs and Infs
-		  double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
-		  int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
-		  
-		  if (depthimage_to_laserscan::DepthTraits<T>::valid(depth)){ // Not NaN or Inf
-		    // Calculate in XYZ
-		    double x = (u - center_x) * depth * constant_x;
-		    double z = depthimage_to_laserscan::DepthTraits<T>::toMeters(depth);
-		    
-		    // Calculate actual distance
-		    r = sqrt(pow(x, 2.0) + pow(z, 2.0));
-		  }
-	  
-	  // Determine if this point should be used.
-	  if(use_point(r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max)){
-	    scan_msg->ranges[index] = r;
-	  }
-	}
+      for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step)
+      {
+        for (int u = 0; u < (int)depth_msg->width; u++) // Loop over each pixel in row
+        {	
+          T depth = depth_row[u];
+          
+          double r = depth; // Assign to pass through NaNs and Infs
+          double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+          int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+          
+          if (depthimage_to_laserscan::DepthTraits<T>::valid(depth)){ // Not NaN or Inf
+            // Calculate in XYZ
+            double x = (u - center_x) * depth * constant_x;
+            double z = depthimage_to_laserscan::DepthTraits<T>::toMeters(depth);
+            
+            // Calculate actual distance
+            r = sqrt(pow(x, 2.0) + pow(z, 2.0));
+          }
+        
+          // Determine if this point should be used.
+          if(use_point_old(r, scan_msg->ranges[index], scan_msg->range_min, scan_msg->range_max)){
+            scan_msg->ranges[index] = r;
+          }
+        }
       }
+    }
+    
+    //We don't distinguish between infs and Nans
+    template<typename T>
+    void convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
+      const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
+    {
+      // Use correct principal point from calibration
+      float center_x = cam_model.cx();
+      float center_y = cam_model.cy();
+      
+      // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y)
+      double unit_scaling = depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
+      float constant_x = unit_scaling / cam_model.fx();
+      float constant_y = unit_scaling / cam_model.fy();
+      
+      const T* depth_row = reinterpret_cast<const T*>(&depth_msg->data[0]);
+      int row_step = depth_msg->step / sizeof(T);
+      
+      int offset = (int)(cam_model.cy()-scan_height/2);
+      depth_row += offset*row_step; // Offset to center of image
+      
+      uint32_t ranges_size = depth_msg->width;
+      
+      std::vector<float> range_ratios(ranges_size);
+      //precomputation, only redo if camera matrix changes
+      //TODO: calculate this for each angle
+      float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
+      T min_depth_limits = min_range;
+      
+      for(int u = 0; u < ranges_size; ++u)
+      {
+        cv::Point2d pt;
+        pt.x = u;
+        pt.y = 0;
+        
+        cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
+        float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
+        range_ratios[u] = ratio;
+        //min_depth_limits[u] = min_range/ratio;
+      }
+
+      
+      std::vector<T> min_depths(ranges_size, std::numeric_limits<T>::max());
+            
+      for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step)
+      {
+        for (int u = 0; u < (int)ranges_size; u++) // Loop over each pixel in row
+        {
+          T depth = depth_row[u];
+          
+          if(depth > min_depth_limits)  //todo: account for angle and use array of limits
+          {
+            min_depths[u] = std::min(depth, min_depths[u]); 
+          }
+          
+        }
+      }
+      
+      for(int i = 0; i < scan_msg->ranges.size(); ++i)
+      {
+        T depth = min_depths[i];
+        float range = range_ratios[i]*depth;
+        
+        if(range < scan_msg->range_max)
+        {
+          scan_msg->ranges[ranges_size-i] = range;
+        }
+      }
+      
+      
     }
     
     image_geometry::PinholeCameraModel cam_model_; ///< image_geometry helper class for managing sensor_msgs/CameraInfo messages.
