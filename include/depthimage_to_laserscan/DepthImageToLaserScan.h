@@ -292,7 +292,7 @@ namespace depthimage_to_laserscan
         
         if(range < scan_msg->range_max)
         {
-          scan_msg->ranges[ranges_size-i] = range;
+          scan_msg->ranges[index] = range;
         }
       }
       
