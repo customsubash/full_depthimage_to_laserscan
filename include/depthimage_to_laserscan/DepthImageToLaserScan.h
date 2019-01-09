@@ -270,10 +270,25 @@ namespace depthimage_to_laserscan
         }
       }
       
-      for(int i = 0; i < scan_msg->ranges.size(); ++i)
+      for(int i = 0; i < ranges_size; ++i)
       {
         T depth = min_depths[i];
         float range = range_ratios[i]*depth;
+        
+        
+        double r = depth; // Assign to pass through NaNs and Infs
+        double th = -atan2((double)(i - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+        int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+        
+        if (depthimage_to_laserscan::DepthTraits<T>::valid(depth))
+        { // Not NaN or Inf
+          // Calculate in XYZ
+          double x = (i - center_x) * depth * constant_x;
+          double z = depthimage_to_laserscan::DepthTraits<T>::toMeters(depth);
+          
+          // Calculate actual distance
+          range = sqrt(pow(x, 2.0) + pow(z, 2.0));
+        }
         
         if(range < scan_msg->range_max)
         {
