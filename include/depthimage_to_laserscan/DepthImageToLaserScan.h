@@ -220,6 +220,7 @@ namespace depthimage_to_laserscan
     void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
       const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
     {
+      float d_floor = .3;
       // Use correct principal point from calibration
       float center_x = cam_model.cx();
       float center_y = cam_model.cy();
@@ -229,8 +230,8 @@ namespace depthimage_to_laserscan
       float constant_x = unit_scaling / cam_model.fx();
       float constant_y = unit_scaling / cam_model.fy();
       
-      const T* depth_row = reinterpret_cast<const T*>(&depth_msg->data[0]);
-      int row_step = depth_msg->step / sizeof(T);
+      const T* depth_row = reinterpret_cast<const T*>(depth_msg->data.data());
+      int row_step = depth_msg->step / sizeof(T); //is this the same as image width?
       
       int offset = (int)(cam_model.cy()-scan_height/2);
       depth_row += offset*row_step; // Offset to center of image
@@ -242,7 +243,7 @@ namespace depthimage_to_laserscan
       //precomputation, only redo if camera matrix changes
       //TODO: calculate this for each angle
       float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
-      T min_depth_limits = min_range;
+      //std::vector<T> min_depth_limits(ranges_size);
       
       for(int u = 0; u < ranges_size; ++u)
       {
@@ -255,60 +256,10 @@ namespace depthimage_to_laserscan
         range_ratios[u] = ratio;
         //min_depth_limits[u] = min_range/ratio;
       }
+      
 
       
       std::vector<T> min_depths;//(ranges_size, std::numeric_limits<T>::max());
-      
-/*      
-      if(scan_height_>1)
-      {
-        //assumes at least 2 rows
-        for(int u = 0; u < ranges_size; u++)
-        {
-          min_depths[u] = std::min(depth_row[u], depth_row[u+ranges_size]);
-        }
-        
-        depth_row += 2*row_step;
-        
-        for(int v = offset+2; v < offset+scan_height_; v++)
-        {
-          #pragma gcc ivdep
-          for (int u = 0; u < (int)ranges_size; u++) // Loop over each pixel in row
-          {
-            T depth = depth_row[u];
-            
-            if(depth > min_depth_limits)  //todo: account for angle and use array of limits
-            {
-              min_depths[u] = std::fmin(depth, min_depths[u]);  
-            }
-            
-          }
-          depth_row += row_step;
-          
-        }
-        
-      }*/
-      
-      
-      /*
-      int c=0;
-      for(int v = offset; v < offset+scan_height_; v++)
-      {
-#pragma gcc ivdep
-        for (int u = 0; u < (int)ranges_size; u++, ++c) // Loop over each pixel in row
-        {
-          T depth = depth_row[c];
-          
-          if(depth > min_depth_limits)  //todo: account for angle and use array of limits
-          {
-            min_depths2[u] = std::min(depth, min_depths[u]);  
-          }
-          
-        }
-        
-      }
-      */
-      
       {
         
         int num_rows = scan_height_;
@@ -324,6 +275,7 @@ namespace depthimage_to_laserscan
           num_rows/=2;
           
           int half_size= num_rows*ranges_size;
+          int remainder = region_size-half_size*2;
           
           
           if(first)
@@ -338,67 +290,26 @@ namespace depthimage_to_laserscan
           mid=half_size;
           end = region_size;
           
-          int u;
-          for(u=start; u<half_size; ++u)
+          for(int u=start; u<half_size; ++u)
           {
             min_depths[u] = std::min(source[u], source[u+half_size]);
           }
-          for(int i=0,u=u+half_size;u<region_size;++u,++i)
+          for(int i=0;i<remainder;++i)
           {
-            min_depths[i] = std::min(min_depths[i], source[u]);
+            min_depths[i] = std::min(min_depths[i], source[half_size*2 +i]);
           }
           min_depths.resize(half_size);
           
           if(first)
           {
             source=min_depths.data();
+            first = false;
           }
         
         }
       
       }
       
-      /*
-      
-      auto res= std::div(num_rows,2);
-      
-      int region_size = res.quot*ranges_size;
-      bool first = true;
-      T* source1,source2,dest;
-      std::vector<T> min_depths(region_size, std::numeric_limits<T>::max());
-      
-      
-      while(num_rows>1)
-      {
-        if(first)
-        {
-          
-        }
-        auto res= std::div(num_rows,2);
-        
-        
-        
-      
-      
-      int region_size = ranges_size*num_rows/2;
-
-      for(int u = 0; u < region_size; u++)
-      {
-        min_depths[u] = std::min(depth_row[u], depth_row[u+region_size]);
-      }
-      
-      while(num_rows % 2==0)
-      {
-        num_rows/=2;
-        region_size/=2;
-        
-        for(int u = 0; u < region_size; ++u)
-        {
-          min_depths[u] = std::min(min_depths[u], min_depths[u+region_size]);
-        }
-        min_depths.resize(region_size);
-      }
-      */
       
       for(int u = 0; u < ranges_size; ++u)
       {
