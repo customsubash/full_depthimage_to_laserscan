@@ -257,9 +257,9 @@ namespace depthimage_to_laserscan
       }
 
       
-      std::vector<T> min_depths(ranges_size, std::numeric_limits<T>::max());
+      std::vector<T> min_depths;//(ranges_size, std::numeric_limits<T>::max());
       
-      
+/*      
       if(scan_height_>1)
       {
         //assumes at least 2 rows
@@ -279,7 +279,7 @@ namespace depthimage_to_laserscan
             
             if(depth > min_depth_limits)  //todo: account for angle and use array of limits
             {
-              min_depths[u] = std::min(depth, min_depths[u]);  
+              min_depths[u] = std::fmin(depth, min_depths[u]);  
             }
             
           }
@@ -287,7 +287,7 @@ namespace depthimage_to_laserscan
           
         }
         
-      }
+      }*/
       
       
       /*
@@ -309,17 +309,85 @@ namespace depthimage_to_laserscan
       }
       */
       
+      {
+        
+        int num_rows = scan_height_;
+        const T* source=depth_row;
+        bool first = true;
+        
+        while(num_rows>1)
+        {
+        
+          //auto res= std::div(num_rows,2);
+          
+          int region_size = num_rows*ranges_size;
+          num_rows/=2;
+          
+          int half_size= num_rows*ranges_size;
+          
+          
+          if(first)
+          {
+            min_depths.resize(half_size, std::numeric_limits<T>::max());
+          }
+          
+          
+          int start,mid,end;
+          
+          start=0;
+          mid=half_size;
+          end = region_size;
+          
+          int u;
+          for(u=start; u<half_size; ++u)
+          {
+            min_depths[u] = std::min(source[u], source[u+half_size]);
+          }
+          for(int i=0,u=u+half_size;u<region_size;++u,++i)
+          {
+            min_depths[i] = std::min(min_depths[i], source[u]);
+          }
+          min_depths.resize(half_size);
+          
+          if(first)
+          {
+            source=min_depths.data();
+          }
+        
+        }
+      
+      }
+      
       /*
-      int num_rows = scan_height_;
-      int region_size = ranges_size*num_rows/2;
+      
+      auto res= std::div(num_rows,2);
+      
+      int region_size = res.quot*ranges_size;
+      bool first = true;
+      T* source1,source2,dest;
       std::vector<T> min_depths(region_size, std::numeric_limits<T>::max());
+      
+      
+      while(num_rows>1)
+      {
+        if(first)
+        {
+          
+        }
+        auto res= std::div(num_rows,2);
+        
+        
+        
+      
+      
+      int region_size = ranges_size*num_rows/2;
 
       for(int u = 0; u < region_size; u++)
       {
         min_depths[u] = std::min(depth_row[u], depth_row[u+region_size]);
       }
       
-      while(num_rows > 1)
+      while(num_rows % 2==0)
       {
         num_rows/=2;
         region_size/=2;
