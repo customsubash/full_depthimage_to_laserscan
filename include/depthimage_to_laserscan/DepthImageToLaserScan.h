@@ -217,7 +217,7 @@ namespace depthimage_to_laserscan
     
     //We don't distinguish between infs and Nans
     template<typename T>
-    void convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
+    void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
       const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
     {
       // Use correct principal point from calibration
@@ -272,7 +272,7 @@ namespace depthimage_to_laserscan
         
         for(int v = offset+2; v < offset+scan_height_; v++)
         {
-          //#pragma gcc ivdep
+          #pragma gcc ivdep
           for (int u = 0; u < (int)ranges_size; u++) // Loop over each pixel in row
           {
             T depth = depth_row[u];
