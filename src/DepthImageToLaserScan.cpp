@@ -134,6 +134,7 @@ sensor_msgs::LaserScanPtr DepthImageToLaserScan::convert_msg(const sensor_msgs::
   
   if(approach==0)
   {
+    //ROS_INFO_STREAM("APPROACH 0");
     if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
     {
       convert_old<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_);

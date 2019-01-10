@@ -42,6 +42,8 @@
 #include <sstream>
 #include <limits.h>
 #include <math.h>
+#include <cmath>
+
 
 namespace depthimage_to_laserscan
 { 
@@ -256,20 +258,79 @@ namespace depthimage_to_laserscan
 
       
       std::vector<T> min_depths(ranges_size, std::numeric_limits<T>::max());
-            
-      for(int v = offset; v < offset+scan_height_; v++, depth_row += row_step)
+      
+      
+      if(scan_height_>1)
       {
-        for (int u = 0; u < (int)ranges_size; u++) // Loop over each pixel in row
+        //assumes at least 2 rows
+        for(int u = 0; u < ranges_size; u++)
         {
-          T depth = depth_row[u];
+          min_depths[u] = std::min(depth_row[u], depth_row[u+ranges_size]);
+        }
+        
+        depth_row += 2*row_step;
+        
+        for(int v = offset+2; v < offset+scan_height_; v++)
+        {
+          //#pragma gcc ivdep
+          for (int u = 0; u < (int)ranges_size; u++) // Loop over each pixel in row
+          {
+            T depth = depth_row[u];
+            
+            if(depth > min_depth_limits)  //todo: account for angle and use array of limits
+            {
+              min_depths[u] = std::min(depth, min_depths[u]);  
+            }
+            
+          }
+          depth_row += row_step;
+          
+        }
+        
+      }
+      
+      
+      /*
+      int c=0;
+      for(int v = offset; v < offset+scan_height_; v++)
+      {
+#pragma gcc ivdep
+        for (int u = 0; u < (int)ranges_size; u++, ++c) // Loop over each pixel in row
+        {
+          T depth = depth_row[c];
           
           if(depth > min_depth_limits)  //todo: account for angle and use array of limits
           {
-            min_depths[u] = std::min(depth, min_depths[u]); 
+            min_depths2[u] = std::min(depth, min_depths[u]);  
           }
           
         }
+        
       }
+      */
+      
+      /*
+      int num_rows = scan_height_;
+      int region_size = ranges_size*num_rows/2;
+      std::vector<T> min_depths(region_size, std::numeric_limits<T>::max());
+
+      for(int u = 0; u < region_size; u++)
+      {
+        min_depths[u] = std::min(depth_row[u], depth_row[u+region_size]);
+      }
+      
+      while(num_rows > 1)
+      {
+        num_rows/=2;
+        region_size/=2;
+        
+        for(int u = 0; u < region_size; ++u)
+        {
+          min_depths[u] = std::min(min_depths[u], min_depths[u+region_size]);
+        }
+        min_depths.resize(region_size);
+      }
+      */
       
       for(int u = 0; u < ranges_size; ++u)
       {
@@ -280,18 +341,6 @@ namespace depthimage_to_laserscan
         double r = depth; // Assign to pass through NaNs and Infs
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
-        
-        /*
-        if (depthimage_to_laserscan::DepthTraits<T>::valid(depth))
-        { // Not NaN or Inf
-          // Calculate in XYZ
-          double x = (i - center_x) * depth * constant_x;
-          double z = depthimage_to_laserscan::DepthTraits<T>::toMeters(depth);
-          
-          // Calculate actual distance
-          range = sqrt(pow(x, 2.0) + pow(z, 2.0));
-        }
-        */
         
         if(range < scan_msg->range_max)
         {
