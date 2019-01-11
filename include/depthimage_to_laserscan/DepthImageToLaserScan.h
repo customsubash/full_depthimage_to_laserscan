@@ -115,6 +115,9 @@ namespace depthimage_to_laserscan
      * 
      */
     void set_output_frame(const std::string output_frame_id);
+    
+    void set_filtering_limits(const float floor_dist, const float overhead_dist);
+    
 
   private:
     /**
@@ -221,7 +224,6 @@ namespace depthimage_to_laserscan
     void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
                                                                const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height, sensor_msgs::Image& range_im) const
     {
-      float d_floor = .2;
       // Use correct principal point from calibration
       float center_x = cam_model.cx();
       float center_y = cam_model.cy();
@@ -290,13 +292,18 @@ namespace depthimage_to_laserscan
           pt.y = v;
           
           cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
-          float ratio=d_floor/world_pnt.y;
+          float ratio;
+          if(world_pnt.y>0)
+          {
+            ratio=floor_dist_/world_pnt.y;
+          }
+          else
+          {
+            ratio=-overhead_dist_/world_pnt.y;
+          }
           float z = world_pnt.z*ratio*unit_scaling; //NOTE: world_pnt.z is always 1, and can precompute unit_scaling/d_floor;
           //TODO: add check for out of range number for 16U, convert to 0?
-          if(z<0) //TODO: For rays above horizon, find min z that places point safely overhead
-          {
-            z = big_val;
-          }
+          
           
           floor_z[i] = z;
           send_data[i] = z;
@@ -386,6 +393,7 @@ namespace depthimage_to_laserscan
     float range_min_; ///< Stores the current minimum range to use.
     float range_max_; ///< Stores the current maximum range to use.
     int scan_height_; ///< Number of pixel rows to use when producing a laserscan from an area.
+    float floor_dist_, overhead_dist_;
     std::string output_frame_id_; ///< Output frame_id for each laserscan.  This is likely NOT the camera's frame_id.
   };
   

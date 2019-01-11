@@ -187,3 +187,9 @@ void DepthImageToLaserScan::set_scan_height(const int scan_height){
 void DepthImageToLaserScan::set_output_frame(const std::string output_frame_id){
   output_frame_id_ = output_frame_id;
 }
+
+void DepthImageToLaserScan::set_filtering_limits(const float floor_dist, const float overhead_dist)
+{
+  floor_dist_=floor_dist;
+  overhead_dist_=overhead_dist;
+}
