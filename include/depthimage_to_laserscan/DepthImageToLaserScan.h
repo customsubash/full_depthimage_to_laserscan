@@ -40,10 +40,10 @@
 #include <image_geometry/pinhole_camera_model.h>
 #include <depthimage_to_laserscan/depth_traits.h>
 #include <sstream>
-#include <limits.h>
-#include <math.h>
+//#include <limits.h>
+//#include <math.h>
 #include <cmath>
-
+//#include <algorithm>
 
 namespace depthimage_to_laserscan
 { 
@@ -243,7 +243,9 @@ namespace depthimage_to_laserscan
       //precomputation, only redo if camera matrix changes
       //TODO: calculate this for each angle
       float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
-      //std::vector<T> min_depth_limits(ranges_size);
+      std::vector<T> min_depth_limits(ranges_size);
+      
+      constexpr float big_val = 1000; //std::numeric_limits<T>::max();
       
       for(int u = 0; u < ranges_size; ++u)
       {
@@ -254,58 +256,84 @@ namespace depthimage_to_laserscan
         cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
         float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
         range_ratios[u] = ratio;
-        //min_depth_limits[u] = min_range/ratio;
+        min_depth_limits[u] = min_range/ratio;
       }
       
+      std::vector<T> floor_z(depth_msg->height*depth_msg->width);
+      
+      //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
+      for(int v=0,i=0; v< depth_msg->height; ++v)
+      {
+        for(int u=0; u<ranges_size; ++u,++i)
+        {
+          cv::Point2d pt;
+          pt.x = u;
+          pt.y = v;
+          
+          cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
+          float ratio=world_pnt.y/d_floor;
+          float z = world_pnt.z*ratio*unit_scaling; //NOTE: world_pnt.z is always 1, and can precompute unit_scaling/d_floor;
+          //TODO: add check for out of range number for 16U, convert to 0?
+          if(z<0) //TODO: For rays above horizon, find min z that places point safely overhead
+          {
+            z = big_val;
+          }
+          
+          floor_z[i] = z;
+        }
+      }
 
       
       std::vector<T> min_depths;//(ranges_size, std::numeric_limits<T>::max());
+      
       {
-        
         int num_rows = scan_height_;
         const T* source=depth_row;
-        bool first = true;
+        const T* safe_mins=floor_z.data() + offset*row_step;        
+        
+        {
+          int region_size = num_rows*ranges_size;
+          
+          min_depths.resize(region_size, big_val);
+          
+          for(int u=0; u<region_size; ++u)
+          {
+            T depth = source[u];
+            T safe_min = safe_mins[u];
+            min_depths[u] = !(depth < safe_min) ? big_val : depth;
+          }
+
+        }
+        
+        source=min_depths.data();
         
         while(num_rows>1)
         {
-        
-          //auto res= std::div(num_rows,2);
-          
-          int region_size = num_rows*ranges_size;
-          num_rows/=2;
-          
-          int half_size= num_rows*ranges_size;
-          int remainder = region_size-half_size*2;
           
           
-          if(first)
           {
-            min_depths.resize(half_size, std::numeric_limits<T>::max());
+            int region_size = num_rows*ranges_size;
+            num_rows/=2;
+            
+            int half_size= num_rows*ranges_size;
+            int remainder = region_size-half_size*2;
+            
+            int start,mid,end;
+            
+            start=0;
+            mid=half_size;
+            end = region_size;
+            
+            for(int u=start; u<half_size; ++u)
+            {
+              min_depths[u] = std::fmin(source[u], source[u+half_size]);
+            }
+            for(int i=0;i<remainder;++i)
+            {
+              min_depths[i] = std::fmin(min_depths[i], source[half_size*2 +i]);
+            }
+            min_depths.resize(half_size); //NOTE: this is probably not necessary
           }
-          
-          
-          int start,mid,end;
-          
-          start=0;
-          mid=half_size;
-          end = region_size;
-          
-          for(int u=start; u<half_size; ++u)
-          {
-            min_depths[u] = std::min(source[u], source[u+half_size]);
-          }
-          for(int i=0;i<remainder;++i)
-          {
-            min_depths[i] = std::min(min_depths[i], source[half_size*2 +i]);
-          }
-          min_depths.resize(half_size);
-          
-          if(first)
-          {
-            source=min_depths.data();
-            first = false;
-          }
-        
         }
       
       }
@@ -321,7 +349,7 @@ namespace depthimage_to_laserscan
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
         
-        if(range < scan_msg->range_max)
+        if(range < scan_msg->range_max) //NOTE: May need to verify that there is not a shorter range already at this index
         {
           scan_msg->ranges[index] = range;
         }
