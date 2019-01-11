@@ -67,7 +67,7 @@ namespace depthimage_to_laserscan
      * 
      */
     sensor_msgs::LaserScanPtr convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-					   const sensor_msgs::CameraInfoConstPtr& info_msg, int approach);
+                                          const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::Image& image);
     
     /**
      * Sets the scan time parameter.
@@ -219,7 +219,7 @@ namespace depthimage_to_laserscan
     //We don't distinguish between infs and Nans
     template<typename T>
     void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
-      const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
+                                                               const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height, sensor_msgs::Image& range_im) const
     {
       float d_floor = .2;
       // Use correct principal point from calibration
@@ -260,6 +260,23 @@ namespace depthimage_to_laserscan
         min_depth_limits[u] = min_range/ratio;
       }
       
+      
+      
+        sensor_msgs::Image &new_msg = range_im;
+        new_msg.header = depth_msg->header;
+        new_msg.height = depth_msg->height;
+        new_msg.width = depth_msg->width;
+        new_msg.encoding = depth_msg->encoding;
+        new_msg.is_bigendian = false; //image->is_bigendian;
+        new_msg.step = depth_msg->step; //sensor_msgs::image_encodings::bitDepth(encoding); // cylindrical_history.elemSize(); // Ideally, replace this with some other way of getting size
+        size_t size = new_msg.step * new_msg.height;
+        new_msg.data.resize(size);
+        //cv_bridge::CvImage(image->header, sensor_msgs::image_encodings::TYPE_32FC1, new_im_).toImageMsg();
+        
+        T* send_data = (T*)new_msg.data.data(); 
+        
+      
+      
       std::vector<T> floor_z(depth_msg->height*depth_msg->width);
       
       //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
@@ -273,7 +290,7 @@ namespace depthimage_to_laserscan
           pt.y = v;
           
           cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
-          float ratio=world_pnt.y/d_floor;
+          float ratio=d_floor/world_pnt.y;
           float z = world_pnt.z*ratio*unit_scaling; //NOTE: world_pnt.z is always 1, and can precompute unit_scaling/d_floor;
           //TODO: add check for out of range number for 16U, convert to 0?
           if(z<0) //TODO: For rays above horizon, find min z that places point safely overhead
@@ -282,8 +299,11 @@ namespace depthimage_to_laserscan
           }
           
           floor_z[i] = z;
+          send_data[i] = z;
         }
       }
+      
+
 
       
       std::vector<T> min_depths;//(ranges_size, std::numeric_limits<T>::max());

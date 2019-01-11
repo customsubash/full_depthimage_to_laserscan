@@ -86,7 +86,7 @@ bool DepthImageToLaserScan::use_point_new(const float new_value, const float old
 }
 
 sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-	      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach){
+      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::Image& image){
   // Set camera model
   cam_model_.fromCameraInfo(info_msg);
   
@@ -154,11 +154,11 @@ sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageTo
   {
     if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
     {
-      convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_);
+      convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_, image);
     }
     else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
     {
-      convert_new<float>(depth_msg, cam_model_, scan_msg, scan_height_);
+      convert_new<float>(depth_msg, cam_model_, scan_msg, scan_height_, image);
     }
     else
     {

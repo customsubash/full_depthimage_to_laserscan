@@ -50,6 +50,9 @@ DepthImageToLaserScanROS::DepthImageToLaserScanROS(ros::NodeHandle& n, ros::Node
   
   // Lazy subscription to depth image topic
   pub_ = n.advertise<sensor_msgs::LaserScan>("scan", 10, boost::bind(&DepthImageToLaserScanROS::connectCb, this, _1), boost::bind(&DepthImageToLaserScanROS::disconnectCb, this, _1));
+  
+  im_pub_ = it_.advertise("mask_image", 1);
+  
 }
 
 DepthImageToLaserScanROS::~DepthImageToLaserScanROS(){
@@ -63,9 +66,11 @@ void DepthImageToLaserScanROS::depthCb(const sensor_msgs::ImageConstPtr& depth_m
   try
   {
     ros::WallTime start = ros::WallTime::now();
-    sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg, approach_);
+    sensor_msgs::Image image;
+    sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg, approach_, image);
     ROS_INFO_STREAM("Approach: " << approach_ << "Conversion time: " << (ros::WallTime::now() - start).toSec() * 1e3 << "ms");
     pub_.publish(scan_msg);
+    im_pub_.publish(image);
   }
   catch (std::runtime_error& e)
   {
