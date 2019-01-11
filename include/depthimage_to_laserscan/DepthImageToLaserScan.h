@@ -45,9 +45,19 @@
 #include <cmath>
 //#include <algorithm>
 //#include <ros/ros.h>
+#include <depthimage_to_laserscan/clean_camera_model.h>
+#include <boost/make_shared.hpp>
 
 namespace depthimage_to_laserscan
 { 
+  
+  struct ConversionCache
+  {
+    float floor_dist, overhead_dist;
+    
+    sensor_msgs::ImageConstPtr limits;
+  };
+  
   class DepthImageToLaserScan
   {
   public:
@@ -160,6 +170,57 @@ namespace depthimage_to_laserscan
     bool use_point_old(const float new_value, const float old_value, const float range_min, const float range_max) const;
     bool use_point_new(const float new_value, const float old_value, const float range_min, const float range_max) const;
     
+    void updateCache(const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
+    
+    template <typename T>
+    void update_limits(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      sensor_msgs::ImagePtr new_msg_ptr = boost::make_shared<sensor_msgs::Image>();
+      
+      sensor_msgs::Image &new_msg = *new_msg_ptr;
+      new_msg.header = depth_msg->header;
+      new_msg.height = depth_msg->height;
+      new_msg.width = depth_msg->width;
+      new_msg.encoding = depth_msg->encoding;
+      new_msg.is_bigendian = false; //image->is_bigendian;
+      new_msg.step = depth_msg->step;
+      size_t size = new_msg.step * new_msg.height;
+      new_msg.data.resize(size);
+      
+      T* send_data = (T*)new_msg.data.data(); 
+      
+      float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
+      
+      
+      //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
+      for(int v=0,i=0; v< depth_msg->height; ++v)
+      {
+        //TODO: These values will be the same along a row, so no need to compute an entire image worth.
+        for(int u=0; u<depth_msg->width; ++u,++i)
+        {
+          cv::Point2d pt;
+          pt.x = u;
+          pt.y = v;
+          
+          cv::Point3f world_pnt = cam_model_.projectPixelTo3dRay(pt);
+          float ratio;
+          if(world_pnt.y>0)
+          {
+            ratio=floor_dist_/world_pnt.y;
+          }
+          else
+          {
+            ratio=-overhead_dist_/world_pnt.y;
+          }
+          float z = world_pnt.z*ratio*unit_scaling; //NOTE: world_pnt.z is always 1, and can precompute unit_scaling/d_floor;
+          //TODO: add check for out of range number for 16U, convert to 0?
+          
+          send_data[i] = z;
+        }
+      }
+      cache_.limits = (sensor_msgs::ImageConstPtr)new_msg_ptr;
+    }
+    
     /**
     * Converts the depth image to a laserscan using the DepthTraits to assist.
     * 
@@ -222,7 +283,7 @@ namespace depthimage_to_laserscan
     //We don't distinguish between infs and Nans
     template<typename T>
     void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
-                                                               const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height, sensor_msgs::Image& range_im) const
+                                                               const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height, const ConversionCache& cache) const
     {
       // Use correct principal point from calibration
       float center_x = cam_model.cx();
@@ -239,6 +300,8 @@ namespace depthimage_to_laserscan
       int offset = (int)(cam_model.cy()-scan_height/2);
       depth_row += offset*row_step; // Offset to center of image
       
+      const T* limits_row = reinterpret_cast<const T*>(cache.limits->data.data());
+      limits_row += offset*row_step;
       
       int ranges_size = depth_msg->width;
       
@@ -263,62 +326,12 @@ namespace depthimage_to_laserscan
       }
       
       
-      
-        sensor_msgs::Image &new_msg = range_im;
-        new_msg.header = depth_msg->header;
-        new_msg.height = depth_msg->height;
-        new_msg.width = depth_msg->width;
-        new_msg.encoding = depth_msg->encoding;
-        new_msg.is_bigendian = false; //image->is_bigendian;
-        new_msg.step = depth_msg->step; //sensor_msgs::image_encodings::bitDepth(encoding); // cylindrical_history.elemSize(); // Ideally, replace this with some other way of getting size
-        size_t size = new_msg.step * new_msg.height;
-        new_msg.data.resize(size);
-        //cv_bridge::CvImage(image->header, sensor_msgs::image_encodings::TYPE_32FC1, new_im_).toImageMsg();
-        
-        T* send_data = (T*)new_msg.data.data(); 
-        
-      
-      
-      std::vector<T> floor_z(depth_msg->height*depth_msg->width);
-      
-      //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
-      for(int v=0,i=0; v< depth_msg->height; ++v)
-      {
-        //TODO: These values will be the same along a row, so no need to compute an entire image worth.
-        for(int u=0; u<ranges_size; ++u,++i)
-        {
-          cv::Point2d pt;
-          pt.x = u;
-          pt.y = v;
-          
-          cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
-          float ratio;
-          if(world_pnt.y>0)
-          {
-            ratio=floor_dist_/world_pnt.y;
-          }
-          else
-          {
-            ratio=-overhead_dist_/world_pnt.y;
-          }
-          float z = world_pnt.z*ratio*unit_scaling; //NOTE: world_pnt.z is always 1, and can precompute unit_scaling/d_floor;
-          //TODO: add check for out of range number for 16U, convert to 0?
-          
-          
-          floor_z[i] = z;
-          send_data[i] = z;
-        }
-      }
-      
-
-
-      
       std::vector<T> min_depths;//(ranges_size, std::numeric_limits<T>::max());
       
       {
         int num_rows = scan_height_;
         const T* source=depth_row;
-        const T* safe_mins=floor_z.data() + offset*row_step;        
+        const T* safe_mins=limits_row; //reinterpret_cast<const T*>(cache.limits->data.data() );
         
         {
           int region_size = num_rows*ranges_size;
@@ -387,7 +400,8 @@ namespace depthimage_to_laserscan
       
     }
     
-    image_geometry::PinholeCameraModel cam_model_; ///< image_geometry helper class for managing sensor_msgs/CameraInfo messages.
+    CleanCameraModel cam_model_; ///< image_geometry helper class for managing sensor_msgs/CameraInfo messages.
+    ConversionCache cache_;
     
     float scan_time_; ///< Stores the time between scans.
     float range_min_; ///< Stores the current minimum range to use.

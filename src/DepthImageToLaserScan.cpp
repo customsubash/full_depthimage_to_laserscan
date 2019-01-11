@@ -85,10 +85,46 @@ bool DepthImageToLaserScan::use_point_new(const float new_value, const float old
   
 }
 
+
+//TODO: Regenerate on reconfigure if distance parameters change
+void DepthImageToLaserScan::updateCache(const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& info_msg)
+{
+  bool regen_limits=false;
+  //First, determine if camera parameters have changed:
+  if(cam_model_.fromCameraInfo(info_msg))
+  {
+    cam_model_.init();
+    regen_limits=true;
+  }
+  else
+  if(depth_msg->encoding != cache_.limits->encoding || cache_.floor_dist != floor_dist_ || cache_.overhead_dist!=overhead_dist_)
+  {
+    regen_limits = true;
+  }
+  
+  if(regen_limits)
+  {
+    if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+    {
+      update_limits<uint16_t>(depth_msg);
+    }
+    else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+    {
+      update_limits<float>(depth_msg);
+    }
+    
+  }
+  
+  cache_.floor_dist = floor_dist_;
+  cache_.overhead_dist = overhead_dist_;
+}
+
 sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
       const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::Image& image){
   // Set camera model
-  cam_model_.fromCameraInfo(info_msg);
+
+  updateCache(depth_msg, info_msg);
+  
   
   // Calculate angle_min and angle_max by measuring angles between the left ray, right ray, and optical center ray
   cv::Point2d raw_pixel_left(0, cam_model_.cy());
@@ -131,7 +167,7 @@ sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageTo
   uint32_t ranges_size = depth_msg->width;
   scan_msg->ranges.assign(ranges_size, std::numeric_limits<float>::quiet_NaN());
   
-  
+  /*
   if(approach==0)
   {
     //ROS_INFO_STREAM("APPROACH 0");
@@ -151,14 +187,15 @@ sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageTo
     }
   }
   else if(approach==1)
+    */
   {
     if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
     {
-      convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_, image);
+     // convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_, image);
     }
     else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
     {
-      convert_new<float>(depth_msg, cam_model_, scan_msg, scan_height_, image);
+      convert_new<float>(depth_msg, cam_model_, scan_msg, scan_height_, cache_);
     }
     else
     {
