@@ -44,6 +44,7 @@
 //#include <math.h>
 #include <cmath>
 //#include <algorithm>
+//#include <ros/ros.h>
 
 namespace depthimage_to_laserscan
 { 
@@ -220,7 +221,7 @@ namespace depthimage_to_laserscan
     void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
       const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height) const
     {
-      float d_floor = .3;
+      float d_floor = .2;
       // Use correct principal point from calibration
       float center_x = cam_model.cx();
       float center_y = cam_model.cy();
@@ -264,6 +265,7 @@ namespace depthimage_to_laserscan
       //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
       for(int v=0,i=0; v< depth_msg->height; ++v)
       {
+        //TODO: These values will be the same along a row, so no need to compute an entire image worth.
         for(int u=0; u<ranges_size; ++u,++i)
         {
           cv::Point2d pt;
@@ -348,10 +350,10 @@ namespace depthimage_to_laserscan
         double r = depth; // Assign to pass through NaNs and Infs
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
-        
+        //ROS_INFO_STREAM("u=" << u << ", index=" << index);
         if(range < scan_msg->range_max) //NOTE: May need to verify that there is not a shorter range already at this index
         {
-          scan_msg->ranges[index] = range;
+          scan_msg->ranges[index] = std::min(range,scan_msg->ranges[index]);
         }
       }
       
