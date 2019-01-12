@@ -66,7 +66,7 @@ void DepthImageToLaserScanROS::depthCb(const sensor_msgs::ImageConstPtr& depth_m
   try
   {
     ros::WallTime start = ros::WallTime::now();
-    sensor_msgs::Image image;
+    sensor_msgs::ImageConstPtr image;
     sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg, approach_, image);
     ROS_INFO_STREAM("Approach: " << approach_ << "Conversion time: " << (ros::WallTime::now() - start).toSec() * 1e3 << "ms");
     pub_.publish(scan_msg);

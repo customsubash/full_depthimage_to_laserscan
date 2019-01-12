@@ -120,11 +120,11 @@ void DepthImageToLaserScan::updateCache(const sensor_msgs::ImageConstPtr& depth_
 }
 
 sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::Image& image){
+      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::ImageConstPtr& image){
   // Set camera model
 
   updateCache(depth_msg, info_msg);
-  
+  image=cache_.limits;
   
   // Calculate angle_min and angle_max by measuring angles between the left ray, right ray, and optical center ray
   cv::Point2d raw_pixel_left(0, cam_model_.cy());

@@ -77,7 +77,7 @@ namespace depthimage_to_laserscan
      * 
      */
     sensor_msgs::LaserScanPtr convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-                                          const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::Image& image);
+                                          const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::ImageConstPtr& image);
     
     /**
      * Sets the scan time parameter.
