@@ -20,7 +20,7 @@ add_compile_options(-std=c++11)
 
 add_library(DepthImageToLaserScan src/DepthImageToLaserScan.cpp)
 target_link_libraries(DepthImageToLaserScan ${catkin_LIBRARIES})
-target_compile_options(DepthImageToLaserScan PRIVATE -g -std=c++11 -Wall -fopt-info-vec-optimized -ftree-vectorize -ffast-math) # 
+target_compile_options(DepthImageToLaserScan PRIVATE -g -std=c++11 -Wall -fopt-info-vec-optimized -ftree-vectorize) #  -ffast-math
 
 
 add_library(DepthImageToLaserScanROS src/DepthImageToLaserScanROS.cpp)
