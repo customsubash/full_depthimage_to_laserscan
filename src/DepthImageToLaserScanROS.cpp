@@ -70,7 +70,13 @@ void DepthImageToLaserScanROS::depthCb(const sensor_msgs::ImageConstPtr& depth_m
     sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg, approach_, image);
     ROS_INFO_STREAM("Approach: " << approach_ << "Conversion time: " << (ros::WallTime::now() - start).toSec() * 1e3 << "ms");
     pub_.publish(scan_msg);
-    im_pub_.publish(image);
+    
+    if(im_pub_.getNumSubscribers()>0)
+    {
+      sensor_msgs::ImagePtr new_mask = boost::make_shared<sensor_msgs::Image>(*image);
+      new_mask->header.stamp = depth_msg->header.stamp;
+      im_pub_.publish(new_mask);
+    }
   }
   catch (std::runtime_error& e)
   {
