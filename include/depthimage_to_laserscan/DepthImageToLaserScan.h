@@ -44,9 +44,12 @@
 //#include <math.h>
 #include <cmath>
 //#include <algorithm>
-//#include <ros/ros.h>
 #include <depthimage_to_laserscan/clean_camera_model.h>
 #include <boost/make_shared.hpp>
+
+#include <ros/ros.h>
+
+
 
 namespace depthimage_to_laserscan
 { 
@@ -342,7 +345,9 @@ namespace depthimage_to_laserscan
           {
             T depth = source[u];
             T safe_min = safe_mins[u];
-            min_depths[u] = !(depth < safe_min) ? big_val : depth;
+            T filtered_depth = !(depth==depth && depth < safe_min) ? big_val : depth;
+            min_depths[u] = filtered_depth;
+            ROS_INFO_STREAM("Depth: " << depth << ", safe_min: " << safe_min << ", big_val: " << big_val << ", result: " << filtered_depth);
           }
 
         }
@@ -351,7 +356,6 @@ namespace depthimage_to_laserscan
         
         while(num_rows>1)
         {
-          
           
           {
             int region_size = num_rows*ranges_size;
@@ -391,7 +395,7 @@ namespace depthimage_to_laserscan
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
         //ROS_INFO_STREAM("u=" << u << ", index=" << index);
-        if(range < scan_msg->range_max) //NOTE: May need to verify that there is not a shorter range already at this index
+        if(range < scan_msg->range_max)
         {
           scan_msg->ranges[index] = std::min(range,scan_msg->ranges[index]);
         }
