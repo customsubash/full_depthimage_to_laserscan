@@ -347,7 +347,7 @@ namespace depthimage_to_laserscan
             T safe_min = safe_mins[u];
             T filtered_depth = !(depth==depth && depth < safe_min) ? big_val : depth;
             min_depths[u] = filtered_depth;
-            ROS_INFO_STREAM("Depth: " << depth << ", safe_min: " << safe_min << ", big_val: " << big_val << ", result: " << filtered_depth);
+            //ROS_INFO_STREAM("Depth: " << depth << ", safe_min: " << safe_min << ", big_val: " << big_val << ", result: " << filtered_depth);
           }
 
         }
@@ -374,7 +374,7 @@ namespace depthimage_to_laserscan
             {
               T min_val = std::fmin(source[u], source[u+half_size]);
               min_depths[u] = min_val;
-              ROS_INFO_STREAM("A: " << source[u] << ", B: " << source[u+half_size] << ", result: " << min_val);
+              //ROS_INFO_STREAM("A: " << source[u] << ", B: " << source[u+half_size] << ", result: " << min_val);
             }
             for(int i=0;i<remainder;++i)
             {
