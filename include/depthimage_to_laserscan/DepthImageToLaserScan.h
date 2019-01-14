@@ -314,7 +314,7 @@ namespace depthimage_to_laserscan
       float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
       std::vector<T> min_depth_limits(ranges_size);
       
-      constexpr float big_val = 1000; //std::numeric_limits<T>::max();
+      constexpr float big_val = 1000; //std::numeric_limits<T>::max(); //std::numeric_limits<float>::quiet_NaN()
       
       for(int u = 0; u < ranges_size; ++u)
       {
@@ -372,7 +372,9 @@ namespace depthimage_to_laserscan
             
             for(int u=start; u<half_size; ++u)
             {
-              min_depths[u] = std::fmin(source[u], source[u+half_size]);
+              T min_val = std::fmin(source[u], source[u+half_size]);
+              min_depths[u] = min_val;
+              ROS_INFO_STREAM("A: " << source[u] << ", B: " << source[u+half_size] << ", result: " << min_val);
             }
             for(int i=0;i<remainder;++i)
             {
@@ -395,9 +397,16 @@ namespace depthimage_to_laserscan
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
         //ROS_INFO_STREAM("u=" << u << ", index=" << index);
+        ROS_INFO_STREAM("Depth: " << depth << ", range: " << range << ", th: " << th << ", index: " << index);
+        
         if(range < scan_msg->range_max)
         {
-          scan_msg->ranges[index] = std::min(range,scan_msg->ranges[index]);
+          float cur_ind_range = scan_msg->ranges[index];
+          
+          if(!(cur_ind_range < range))
+          {
+            scan_msg->ranges[index] = range;
+          }
         }
       }
       
