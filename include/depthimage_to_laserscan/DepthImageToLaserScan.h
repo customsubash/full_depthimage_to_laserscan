@@ -56,9 +56,13 @@ namespace depthimage_to_laserscan
   
   struct ConversionCache
   {
-    float floor_dist, overhead_dist;
+    float floor_dist, 
+          overhead_dist,
+          angle_min,
+          angle_max;
     
     sensor_msgs::ImageConstPtr limits;
+    std::vector<uint16_t> indicies;
   };
   
   class DepthImageToLaserScan
@@ -174,6 +178,53 @@ namespace depthimage_to_laserscan
     bool use_point_new(const float new_value, const float old_value, const float range_min, const float range_max) const;
     
     void updateCache(const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
+    
+    
+    template <typename T>
+    void update_mapping(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      // Calculate angle_min and angle_max by measuring angles between the left ray, right ray, and optical center ray
+      cv::Point2d raw_pixel_left(0, cam_model_.cy());
+      cv::Point2d rect_pixel_left = cam_model_.rectifyPoint(raw_pixel_left);
+      cv::Point3d left_ray = cam_model_.projectPixelTo3dRay(rect_pixel_left);
+      
+      cv::Point2d raw_pixel_right(depth_msg->width-1, cam_model_.cy());
+      cv::Point2d rect_pixel_right = cam_model_.rectifyPoint(raw_pixel_right);
+      cv::Point3d right_ray = cam_model_.projectPixelTo3dRay(rect_pixel_right);
+      
+      cv::Point2d raw_pixel_center(cam_model_.cx(), cam_model_.cy());
+      cv::Point2d rect_pixel_center = cam_model_.rectifyPoint(raw_pixel_center);
+      cv::Point3d center_ray = cam_model_.projectPixelTo3dRay(rect_pixel_center);
+      
+      double angle_max = angle_between_rays(left_ray, center_ray);
+      double angle_min = -angle_between_rays(center_ray, right_ray); // Negative because the laserscan message expects an opposite rotation of that from the depth image
+      
+      cache_.angle_min=angle_min;
+      cache_.angle_max=angle_max;
+      
+      double angle_increment = (angle_max - angle_min) / (depth_msg->width - 1);
+      
+      
+      float center_x = cam_model_.cx();
+      float center_y = cam_model_.cy();
+      
+      // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y) NOTE: should be able to just use meters, since the units cancels out, though the gains are probably minimal
+      double unit_scaling = depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
+      float constant_x = unit_scaling / cam_model_.fx();
+      float constant_y = unit_scaling / cam_model_.fy();
+      
+      cache_.indicies.resize(depth_msg->width);
+      
+      for(int u = 0; u < depth_msg->width; ++u)
+      {
+        
+        double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+        int index = (th - angle_min) / angle_increment;
+        
+        cache_.indicies[u] = index;
+      }
+    }
+    
     
     template <typename T>
     void update_limits(const sensor_msgs::ImageConstPtr& depth_msg)
@@ -394,10 +445,11 @@ namespace depthimage_to_laserscan
         
         
         double r = depth; // Assign to pass through NaNs and Infs
-        double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
-        int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+//         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
+//         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
+        int index = cache_.indicies[u];
         //ROS_INFO_STREAM("u=" << u << ", index=" << index);
-        ROS_INFO_STREAM("Depth: " << depth << ", range: " << range << ", th: " << th << ", index: " << index);
+        //ROS_INFO_STREAM("Depth: " << depth << ", range: " << range << ", th: " << th << ", index: " << index);
         
         if(range < scan_msg->range_max)
         {
