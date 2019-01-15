@@ -20,7 +20,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(DepthImageToLaserScan src/DepthImageToLaserScan.cpp)
 target_link_libraries(DepthImageToLaserScan ${catkin_LIBRARIES})
-target_compile_options(DepthImageToLaserScan PRIVATE -Wall -fopt-info-vec-optimized-all -ftree-vectorize  -ffast-math ) #  -ffast-math
+target_compile_options(DepthImageToLaserScan PRIVATE -Wall -fopt-info-vec-optimized -ftree-vectorize  -ffast-math ) #  -ffast-math
 target_compile_options(DepthImageToLaserScan PUBLIC -std=c++11)
 
 
