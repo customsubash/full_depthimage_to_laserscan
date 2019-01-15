@@ -249,7 +249,7 @@ namespace depthimage_to_laserscan
       
       float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
       
-      cache_.row_limits.resize(depth_msg->width);
+      cache_.row_limits.resize(depth_msg->height);
       
       
       //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
