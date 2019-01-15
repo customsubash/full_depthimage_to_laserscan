@@ -360,7 +360,7 @@ namespace depthimage_to_laserscan
       int ranges_size = depth_msg->width;
       
       std::vector<float> range_ratios(ranges_size);
-      //precomputation, only redo if camera matrix changes
+
       //TODO: calculate this for each angle
       float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
       std::vector<T> min_depth_limits(ranges_size);
@@ -396,9 +396,8 @@ namespace depthimage_to_laserscan
           {
             T depth = source[u];
             T safe_min = safe_mins[u];
-            T filtered_depth = !(depth==depth && depth < safe_min) ? big_val : depth;
+            T filtered_depth = (depth < safe_min) ? depth : big_val;
             min_depths[u] = filtered_depth;
-            //ROS_INFO_STREAM("Depth: " << depth << ", safe_min: " << safe_min << ", big_val: " << big_val << ", result: " << filtered_depth);
           }
 
         }
@@ -425,7 +424,6 @@ namespace depthimage_to_laserscan
             {
               T min_val = std::fmin(source[u], source[u+half_size]);
               min_depths[u] = min_val;
-              //ROS_INFO_STREAM("A: " << source[u] << ", B: " << source[u+half_size] << ", result: " << min_val);
             }
             for(int i=0;i<remainder;++i)
             {
@@ -443,14 +441,8 @@ namespace depthimage_to_laserscan
         T depth = min_depths[u];
         float range = range_ratios[u]*depth;
         
-        
-        double r = depth; // Assign to pass through NaNs and Infs
-//         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
-//         int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
         int index = cache_.indicies[u];
-        //ROS_INFO_STREAM("u=" << u << ", index=" << index);
-        //ROS_INFO_STREAM("Depth: " << depth << ", range: " << range << ", th: " << th << ", index: " << index);
-        
+
         if(range < scan_msg->range_max)
         {
           float cur_ind_range = scan_msg->ranges[index];
