@@ -338,11 +338,13 @@ namespace depthimage_to_laserscan
     inline
     T mymin(T a, T b) const
     {
-      T m = std::fmin(a,b);
+      T m = std::min(a,b);
       return m;
     }
     
     //We don't distinguish between infs and Nans
+    //Also currently ignores range_min_
+    //A number of things won't work for uint16 (currently): finding min ignores 0's; big_val is only big in meters; 
     template<typename T>
     void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
                                                                const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height, const ConversionCache& cache) const
@@ -373,8 +375,8 @@ namespace depthimage_to_laserscan
       float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
       std::vector<T> min_depth_limits(ranges_size);
       
-      //NOTE: when replacing this with NaN, will probably need to also replace fmin with custom function
-      constexpr float big_val = 1000;//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max(); //std::numeric_limits<float>::quiet_NaN()
+      //NOTE: this just needs to be bigger than any valid range, so range_max_ +1 should work fine
+      constexpr float big_val = 1000;//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max();
       
       for(int u = 0; u < ranges_size; ++u)
       {
@@ -389,7 +391,7 @@ namespace depthimage_to_laserscan
       }
       
       
-      std::vector<T> min_depths;//(ranges_size, std::numeric_limits<T>::max()); //TODO: Maybe hold onto a persistent buffer so don't have to reallocate memory each time?
+      std::vector<T> min_depths; //TODO: Maybe hold onto a persistent buffer so don't have to reallocate memory each time?
       
       {
         int num_rows = scan_height_;
@@ -431,12 +433,17 @@ namespace depthimage_to_laserscan
             
             for(int u=start; u<half_size; ++u)
             {
-              T min_val = mymin(source[u], source[u+half_size]);
+              T a = source[u];
+              T b = source[u+half_size];
+              T min_val = mymin(a,b);
               min_depths[u] = min_val;
             }
             for(int i=0;i<remainder;++i)
             {
-              min_depths[i] = mymin(source[i], source[half_size*2 +i]);
+              T a = source[i];
+              T b = source[half_size*2+i];
+              T min_val = mymin(a,b);
+              min_depths[i] = min_val;
             }
             min_depths.resize(half_size); //NOTE: this is probably not necessary
           }
