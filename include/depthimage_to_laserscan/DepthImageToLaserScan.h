@@ -64,6 +64,9 @@ namespace depthimage_to_laserscan
     sensor_msgs::ImageConstPtr limits;
     std::vector<uint16_t> indicies;
     std::vector<float> row_limits;
+    std::vector<float> range_ratios;
+    std::vector<float> min_depth_limits;
+    
   };
   
   class DepthImageToLaserScan
@@ -277,6 +280,23 @@ namespace depthimage_to_laserscan
         cache_.row_limits[v] = send_data[i-1];
       }
       cache_.limits = (sensor_msgs::ImageConstPtr)new_msg_ptr;
+      
+      cache_.range_ratios.resize(depth_msg->width);
+      float min_range = DepthTraits<T>::fromMeters(range_min_);
+      cache_.min_depth_limits.resize(depth_msg->width);
+      
+      for(int u = 0; u < depth_msg->width; ++u)
+      {
+        cv::Point2d pt;
+        pt.x = u;
+        pt.y = 0;
+        
+        cv::Point3f world_pnt = cam_model_.projectPixelTo3dRay(pt);
+        float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
+        cache_.range_ratios[u] = ratio;
+        cache_.min_depth_limits[u] = min_range/ratio;
+      }
+      
     }
     
     /**
@@ -373,28 +393,13 @@ namespace depthimage_to_laserscan
       
       int ranges_size = depth_msg->width;
       
-      std::vector<float> range_ratios(ranges_size);//TODO: Maybe cache this?
+      const std::vector<float>& range_ratios = cache_.range_ratios;
 
-      //TODO: calculate this for each angle
-      float min_range = DepthTraits<T>::fromMeters(scan_msg->range_min);
-      std::vector<T> min_depth_limits(ranges_size);
+      const std::vector<T>& min_depth_limits = cache_.min_depth_limits;
       
       //NOTE: this just needs to be bigger than any valid range, so range_max_ +1 should work fine
       constexpr float big_val = 1000;//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max();
-      
-      for(int u = 0; u < ranges_size; ++u)
-      {
-        cv::Point2d pt;
-        pt.x = u;
-        pt.y = 0;
-        
-        cv::Point3f world_pnt = cam_model.projectPixelTo3dRay(pt);
-        float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
-        range_ratios[u] = ratio;
-        min_depth_limits[u] = min_range/ratio;
-      }
-      
-      
+
       std::vector<T> min_depths; //TODO: Maybe hold onto a persistent buffer so don't have to reallocate memory each time?
       
       {
@@ -412,8 +417,9 @@ namespace depthimage_to_laserscan
             for(int u=0; u<ranges_size; ++u,++i)
             {
               T depth = source[i];
+              T min_lim = min_depth_limits[u];
               //T safe_min = safe_mins[u];
-              T filtered_depth = (depth < safe_min) ? depth : big_val;
+              T filtered_depth = (depth < safe_min && min_lim < depth) ? depth : big_val;
               min_depths[i] = filtered_depth;
             }
           }
