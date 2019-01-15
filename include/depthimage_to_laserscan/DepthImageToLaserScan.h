@@ -63,6 +63,7 @@ namespace depthimage_to_laserscan
     
     sensor_msgs::ImageConstPtr limits;
     std::vector<uint16_t> indicies;
+    std::vector<float> row_limits;
   };
   
   class DepthImageToLaserScan
@@ -245,6 +246,8 @@ namespace depthimage_to_laserscan
       
       float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
       
+      cache_.row_limits.resize(depth_msg->width);
+      
       
       //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
       for(int v=0,i=0; v< depth_msg->height; ++v)
@@ -271,6 +274,7 @@ namespace depthimage_to_laserscan
           
           send_data[i] = z;
         }
+        cache_.row_limits[v] = send_data[i-1];
       }
       cache_.limits = (sensor_msgs::ImageConstPtr)new_msg_ptr;
     }
@@ -364,8 +368,8 @@ namespace depthimage_to_laserscan
       int offset = (int)(cam_model.cy()-scan_height/2);
       depth_row += offset*row_step; // Offset to center of image
       
-      const T* limits_row = reinterpret_cast<const T*>(cache.limits->data.data());
-      limits_row += offset*row_step;
+      const T* limits_row = reinterpret_cast<const T*>(cache.row_limits.data());
+      limits_row += offset;
       
       int ranges_size = depth_msg->width;
       
@@ -402,13 +406,16 @@ namespace depthimage_to_laserscan
           int region_size = num_rows*ranges_size;
           
           min_depths.resize(region_size, big_val);
-          
-          for(int u=0; u<region_size; ++u)
+          for(int v = 0, i=0; v<num_rows;v++)
           {
-            T depth = source[u];
-            T safe_min = safe_mins[u];
-            T filtered_depth = (depth < safe_min) ? depth : big_val;
-            min_depths[u] = filtered_depth;
+            T safe_min = safe_mins[v];
+            for(int u=0; u<ranges_size; ++u,++i)
+            {
+              T depth = source[i];
+              //T safe_min = safe_mins[u];
+              T filtered_depth = (depth < safe_min) ? depth : big_val;
+              min_depths[i] = filtered_depth;
+            }
           }
 
         }
