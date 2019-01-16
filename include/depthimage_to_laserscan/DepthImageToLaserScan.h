@@ -96,7 +96,7 @@ namespace depthimage_to_laserscan
     std::vector<float> row_limits;
     MultitypeBuffer min_depth_limits;
     //std::vector<float> min_depth_limits;
-    mutable std::vector<float> min_depths_buffer;
+    mutable MultitypeBuffer min_depths_buffer;
     
 //     template <typename T>
 //     const T* get_row_limits() const
@@ -345,7 +345,7 @@ namespace depthimage_to_laserscan
     template <typename T>
     void update_buffer(const sensor_msgs::ImageConstPtr& depth_msg)
     {
-      cache_.min_depths_buffer.resize(depth_msg->width*scan_height_); //TODO
+      cache_.min_depths_buffer.resize<T>(depth_msg->width*scan_height_); //TODO
     }
     
     void update_limits(const sensor_msgs::ImageConstPtr& depth_msg)
@@ -521,7 +521,7 @@ namespace depthimage_to_laserscan
       //NOTE: this just needs to be bigger than any valid range, so range_max_ +1 should work fine
       constexpr float big_val = 1000;//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max();
 
-      std::vector<T>& min_depths=cache.min_depths_buffer; //TODO: Maybe hold onto a persistent buffer so don't have to reallocate memory each time?
+      T* min_depths=cache.min_depths_buffer;
       
       {
         int num_rows = scan_height_;
@@ -531,7 +531,7 @@ namespace depthimage_to_laserscan
         {
           int region_size = num_rows*ranges_size;
           
-          min_depths.resize(region_size, big_val);
+          //min_depths.resize(region_size, big_val);
           for(int v = 0, i=0; v<num_rows;v++)
           {
             T safe_min = safe_mins[v];
@@ -547,7 +547,7 @@ namespace depthimage_to_laserscan
 
         }
         
-        source=min_depths.data();
+        source=min_depths;
         
         while(num_rows>1)
         {
@@ -579,7 +579,7 @@ namespace depthimage_to_laserscan
               T min_val = mymin(a,b);
               min_depths[i] = min_val;
             }
-            min_depths.resize(half_size); //NOTE: this is probably not necessary
+            //min_depths.resize(half_size); //NOTE: this is probably not necessary
           }
         }
       
