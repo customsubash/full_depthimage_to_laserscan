@@ -66,7 +66,7 @@ namespace depthimage_to_laserscan
     std::vector<float> row_limits;
     std::vector<float> range_ratios;
     std::vector<float> min_depth_limits;
-    
+    mutable std::vector<float> min_depths_buffer;
   };
   
   class DepthImageToLaserScan
@@ -297,6 +297,8 @@ namespace depthimage_to_laserscan
         cache_.min_depth_limits[u] = min_range/ratio;
       }
       
+      cache_.min_depths_buffer.resize(depth_msg->width*scan_height_); //need to reallocate only if scan_height_ or image width changes
+      
     }
     
     /**
@@ -400,7 +402,7 @@ namespace depthimage_to_laserscan
       //NOTE: this just needs to be bigger than any valid range, so range_max_ +1 should work fine
       constexpr float big_val = 1000;//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max();
 
-      std::vector<T> min_depths; //TODO: Maybe hold onto a persistent buffer so don't have to reallocate memory each time?
+      std::vector<T>& min_depths=cache_.min_depths_buffer; //TODO: Maybe hold onto a persistent buffer so don't have to reallocate memory each time?
       
       {
         int num_rows = scan_height_;
