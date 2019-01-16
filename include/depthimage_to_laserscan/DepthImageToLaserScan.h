@@ -59,7 +59,11 @@ namespace depthimage_to_laserscan
     float floor_dist, 
           overhead_dist,
           angle_min,
-          angle_max;
+          angle_max,
+          range_min,
+          range_max;
+    
+    int scan_height;
     
     sensor_msgs::ImageConstPtr limits;
     std::vector<uint16_t> indicies;
@@ -140,6 +144,8 @@ namespace depthimage_to_laserscan
     void set_filtering_limits(const float floor_dist, const float overhead_dist);
     
 
+    void updateCache();
+    
   private:
     /**
      * Computes euclidean length of a cv::Point3d (as a ray from origin)
@@ -184,6 +190,18 @@ namespace depthimage_to_laserscan
     void updateCache(const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& info_msg);
     
     
+    void update_mapping(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+      {
+        update_mapping<uint16_t>(depth_msg);
+      }
+      else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+      {
+        update_mapping<float>(depth_msg);
+      }
+    }
+    
     template <typename T>
     void update_mapping(const sensor_msgs::ImageConstPtr& depth_msg)
     {
@@ -221,14 +239,84 @@ namespace depthimage_to_laserscan
       
       for(int u = 0; u < depth_msg->width; ++u)
       {
-        
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - angle_min) / angle_increment;
         
         cache_.indicies[u] = index;
       }
+      
+      
+      cache_.range_ratios.resize(depth_msg->width);
+      
+      for(int u = 0; u < depth_msg->width; ++u)
+      {
+        cv::Point2d pt;
+        pt.x = u;
+        pt.y = 0;
+        
+        cv::Point3f world_pnt = cam_model_.projectPixelTo3dRay(pt);
+        float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
+        cache_.range_ratios[u] = ratio;
+      }
+      
     }
     
+    void update_min_range(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+      {
+        update_min_range<uint16_t>(depth_msg);
+      }
+      else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+      {
+        update_min_range<float>(depth_msg);
+      }
+    }
+    
+    template <typename T>
+    void update_min_range(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      float min_range = DepthTraits<T>::fromMeters(range_min_);
+      cache_.min_depth_limits.resize(depth_msg->width);
+      
+      for(int u = 0; u < depth_msg->width; ++u)
+      {
+        float ratio = cache_.range_ratios[u];
+        cache_.min_depth_limits[u] = min_range/ratio;
+      }
+      cache_.range_min = range_min_;
+    }
+    
+    void update_buffer(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+      {
+        update_buffer<uint16_t>(depth_msg);
+      }
+      else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+      {
+        update_buffer<float>(depth_msg);
+      }
+      cache_.scan_height = scan_height_;
+    }
+    
+    template <typename T>
+    void update_buffer(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+        cache_.min_depths_buffer.resize(depth_msg->width*scan_height_); //need to reallocate only if scan_height_ or image width changes
+    }
+    
+    void update_limits(const sensor_msgs::ImageConstPtr& depth_msg)
+    {
+      if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
+      {
+        update_limits<uint16_t>(depth_msg);
+      }
+      else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+      {
+        update_limits<float>(depth_msg);
+      }
+    }
     
     template <typename T>
     void update_limits(const sensor_msgs::ImageConstPtr& depth_msg)
@@ -253,6 +341,7 @@ namespace depthimage_to_laserscan
       
       
       //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
+      //      Even though this is only used for visualization, perhaps it should only reflect the 'scan_height_' in use?
       for(int v=0,i=0; v< depth_msg->height; ++v)
       {
         //TODO: These values will be the same along a row, so no need to compute an entire image worth.
@@ -280,25 +369,9 @@ namespace depthimage_to_laserscan
         cache_.row_limits[v] = send_data[i-1];
       }
       cache_.limits = (sensor_msgs::ImageConstPtr)new_msg_ptr;
-      
-      cache_.range_ratios.resize(depth_msg->width);
-      float min_range = DepthTraits<T>::fromMeters(range_min_);
-      cache_.min_depth_limits.resize(depth_msg->width);
-      
-      for(int u = 0; u < depth_msg->width; ++u)
-      {
-        cv::Point2d pt;
-        pt.x = u;
-        pt.y = 0;
-        
-        cv::Point3f world_pnt = cam_model_.projectPixelTo3dRay(pt);
-        float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
-        cache_.range_ratios[u] = ratio;
-        cache_.min_depth_limits[u] = min_range/ratio;
-      }
-      
-      cache_.min_depths_buffer.resize(depth_msg->width*scan_height_); //need to reallocate only if scan_height_ or image width changes
-      
+            
+      cache_.floor_dist = floor_dist_;
+      cache_.overhead_dist = overhead_dist_;
     }
     
     /**

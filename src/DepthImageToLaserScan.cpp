@@ -85,39 +85,79 @@ bool DepthImageToLaserScan::use_point_new(const float new_value, const float old
   
 }
 
+void DepthImageToLaserScan::updateCache()
+{
+  const sensor_msgs::CameraInfoConstPtr info_msg;
+  
+  //Can only update cache if we know what the previous conditions were
+  if(cache_.limits)
+  {
+    updateCache(cache_.limits, info_msg);
+  }
+}
+
 //TODO: Regenerate on reconfigure if distance parameters change
 void DepthImageToLaserScan::updateCache(const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
-  bool regen_limits=false;
+  bool camera_params_changed=false;
+  bool data_type_changed=false;
+  bool buffer_size_changed=false;
+  bool safe_limits_changed=false;
+  bool range_min_changed=false;
+  
   //First, determine if camera parameters have changed:
-  if(cam_model_.fromCameraInfo(info_msg))
+  if(info_msg && cam_model_.fromCameraInfo(info_msg))
   {
     cam_model_.init();
-    regen_limits=true;
-  }
-  else
-  if(depth_msg->encoding != cache_.limits->encoding || cache_.floor_dist != floor_dist_ || cache_.overhead_dist!=overhead_dist_)
-  {
-    regen_limits = true;
+    camera_params_changed=true;
   }
   
-  if(regen_limits)
+  if(depth_msg && cache_.limits && depth_msg->encoding != cache_.limits->encoding)
   {
-    if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
-    {
-      update_limits<uint16_t>(depth_msg);
-      update_mapping<uint16_t>(depth_msg);
-    }
-    else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
-    {
-      update_limits<float>(depth_msg);
-      update_mapping<float>(depth_msg);
-    }
-    
+    data_type_changed=true;
   }
   
-  cache_.floor_dist = floor_dist_;
-  cache_.overhead_dist = overhead_dist_;
+  if(scan_height_ != cache_.scan_height)
+  {
+    buffer_size_changed=true;
+  }
+  
+  if(floor_dist_ != cache_.floor_dist || overhead_dist_!=cache_.overhead_dist)
+  {
+    safe_limits_changed=true;
+  }
+  
+  if(range_min_ != cache_.range_min)
+  {
+    range_min_changed=true;
+  }
+  
+  if(camera_params_changed || safe_limits_changed || data_type_changed)
+  {
+    ROS_INFO_STREAM("Updating safe limits");
+    update_limits(depth_msg);
+  }
+  
+  if(camera_params_changed)
+  {
+    ROS_INFO_STREAM("Updating mapping");
+    update_mapping(depth_msg);
+  }
+  
+  if(camera_params_changed || range_min_changed || data_type_changed)
+  { 
+    ROS_INFO_STREAM("Updating min range");
+    update_min_range(depth_msg);
+  }
+  
+  if(camera_params_changed || buffer_size_changed || data_type_changed)
+  {
+    ROS_INFO_STREAM("Updating buffer");
+    update_buffer(depth_msg);
+  }
+  
+
+  
 }
 
 sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,

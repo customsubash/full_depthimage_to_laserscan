@@ -44,6 +44,7 @@
 
 #include <depthimage_to_laserscan/DepthImageToLaserScan.h>
 
+
 namespace depthimage_to_laserscan
 { 
   class DepthImageToLaserScanROS
@@ -99,6 +100,8 @@ namespace depthimage_to_laserscan
     image_transport::Publisher im_pub_;
     ros::Publisher pub_; ///< Publisher for output LaserScan messages
     dynamic_reconfigure::Server<depthimage_to_laserscan::DepthConfig> srv_; ///< Dynamic reconfigure server
+    
+    boost::mutex config_mutex_;
     
     depthimage_to_laserscan::DepthImageToLaserScan dtl_; ///< Instance of the DepthImageToLaserScan conversion class.
     int approach_;

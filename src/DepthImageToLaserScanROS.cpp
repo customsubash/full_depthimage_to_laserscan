@@ -66,8 +66,15 @@ void DepthImageToLaserScanROS::depthCb(const sensor_msgs::ImageConstPtr& depth_m
   try
   {
     ros::WallTime start = ros::WallTime::now();
+    
     sensor_msgs::ImageConstPtr image;
-    sensor_msgs::LaserScanPtr scan_msg = dtl_.convert_msg(depth_msg, info_msg, approach_, image);
+    sensor_msgs::LaserScanPtr scan_msg;
+    
+    {
+      boost::mutex::scoped_lock lock(config_mutex_);
+      scan_msg= dtl_.convert_msg(depth_msg, info_msg, approach_, image);
+    }
+    
     ROS_INFO_STREAM("Approach: " << approach_ << "Conversion time: " << (ros::WallTime::now() - start).toSec() * 1e3 << "ms");
     pub_.publish(scan_msg);
     
@@ -102,9 +109,13 @@ void DepthImageToLaserScanROS::disconnectCb(const ros::SingleSubscriberPublisher
 }
 
 void DepthImageToLaserScanROS::reconfigureCb(depthimage_to_laserscan::DepthConfig& config, uint32_t level){
+  boost::mutex::scoped_lock lock(config_mutex_);
+  
     dtl_.set_scan_time(config.scan_time);
     dtl_.set_range_limits(config.range_min, config.range_max);
     dtl_.set_scan_height(config.scan_height);
     dtl_.set_output_frame(config.output_frame_id);
     dtl_.set_filtering_limits(config.floor_dist, config.overhead_dist);
+    
+    dtl_.updateCache();
 }
