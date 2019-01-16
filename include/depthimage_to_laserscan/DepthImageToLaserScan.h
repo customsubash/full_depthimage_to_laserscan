@@ -54,7 +54,7 @@
 namespace depthimage_to_laserscan
 { 
   
-  struct MultitypeBuffer
+  struct MultitypeVector
   {
     template <typename T>
     void resize(unsigned int size)
@@ -93,26 +93,12 @@ namespace depthimage_to_laserscan
     std::vector<uint16_t> indicies;
     std::vector<float> range_ratios;
     
-    std::vector<float> row_limits;
-    MultitypeBuffer min_depth_limits;
-    //std::vector<float> min_depth_limits;
-    mutable MultitypeBuffer min_depths_buffer;
-    
-//     template <typename T>
-//     const T* get_row_limits() const
-//     {
-//       const T* limits_row = reinterpret_cast<const T*>(cache.row_limits.data());
-//     }
+    MultitypeVector row_limits;
+    MultitypeVector min_depth_limits;
+    mutable MultitypeVector min_depths_buffer;
     
   };
-  
-//   struct ConversionCacheAccessor
-//   {
-//     
-//     template <typename T>
-//     std::vector<T>& get_row_limits();
-// 
-//   }
+
   
   class DepthImageToLaserScan
   {
@@ -379,16 +365,15 @@ namespace depthimage_to_laserscan
       
       float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
       
-      cache_.row_limits.resize(depth_msg->height); //TODO
+      cache_.row_limits.resize<T>(depth_msg->height);
       
-      T* row_limits = cache_.row_limits.data();
+      T* row_limits = cache_.row_limits;
       
-      
-      //NOTE: This really only needs to be checked (and therefore generated) up to the horizon (assuming level camera).
-      //      Even though this is only used for visualization, perhaps it should only reflect the 'scan_height_' in use?
+      //TODO: Even though this is only used for visualization, perhaps it should only reflect the relevant region, as determined by 'scan_height_'?
+      //TODO: Generate the whole image only on demand?
       for(int v=0,i=0; v< depth_msg->height; ++v)
       {
-        //TODO: These values will be the same along a row, so no need to compute an entire image worth.
+        //Results should be the same along a row; dense limits only used for visualization purposes
         for(int u=0; u<depth_msg->width; ++u,++i)
         {
           cv::Point2d pt;
@@ -405,7 +390,8 @@ namespace depthimage_to_laserscan
           {
             ratio=-overhead_dist_/world_pnt.y;
           }
-          float z = world_pnt.z*ratio*unit_scaling; //NOTE: world_pnt.z is always 1, and can precompute unit_scaling/d_floor;
+          //NOTE: Low priority optimizations: world_pnt.z is always 1, and could precompute unit_scaling/floor_dist_
+          float z = world_pnt.z*ratio*unit_scaling; 
           //TODO: add check for out of range number for 16U, convert to 0?
           
           send_data[i] = z;
@@ -510,7 +496,7 @@ namespace depthimage_to_laserscan
       
       
       int ranges_size = depth_msg->width;
-      const T* limits_row = reinterpret_cast<const T*>(cache.row_limits.data());
+      const T* limits_row = cache.row_limits;
       const std::vector<uint16_t>& indicies = cache.indicies;
       const std::vector<float>& range_ratios = cache.range_ratios;
       const T* min_depth_limits = cache.min_depth_limits;
