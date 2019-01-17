@@ -257,17 +257,20 @@ namespace depthimage_to_laserscan
       float center_x = cam_model_.cx();
       float center_y = cam_model_.cy();
       
-      // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y) NOTE: should be able to just use meters, since the units cancels out, though the gains are probably minimal
+      // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y) NOTE: should be able to just use meters, since the units cancels out, though the gains are probably negligible, if any
       double unit_scaling = depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
       float constant_x = unit_scaling / cam_model_.fx();
       float constant_y = unit_scaling / cam_model_.fy();
       
       cache_.indicies.resize(depth_msg->width);
       
+      ROS_INFO_STREAM("center_x=" << center_x << ", constant_x=" << constant_x << ", unit_scaling=" << unit_scaling);
       for(int u = 0; u < depth_msg->width; ++u)
       {
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - angle_min) / angle_increment;
+        
+        ROS_INFO_STREAM("u=" << u << ", th=" << th << ", index=" << index);
         
         cache_.indicies[u] = index;
       }
@@ -284,6 +287,8 @@ namespace depthimage_to_laserscan
         cv::Point3f world_pnt = cam_model_.projectPixelTo3dRay(pt);
         float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
         cache_.range_ratios[u] = ratio;
+        ROS_INFO_STREAM("u=" << u << ", ratio=" << ratio);
+        
       }
       
     }
@@ -292,7 +297,7 @@ namespace depthimage_to_laserscan
     {
       if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
       {
-        //update_min_range<uint16_t>(depth_msg);
+        update_min_range<uint16_t>(depth_msg);
       }
       else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
       {
@@ -319,7 +324,7 @@ namespace depthimage_to_laserscan
     {
       if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
       {
-        //update_buffer<uint16_t>(depth_msg);
+        update_buffer<uint16_t>(depth_msg);
       }
       else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
       {
@@ -338,7 +343,7 @@ namespace depthimage_to_laserscan
     {
       if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
       {
-        //update_limits<uint16_t>(depth_msg);
+        update_limits<uint16_t>(depth_msg);
       }
       else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
       {
@@ -363,11 +368,14 @@ namespace depthimage_to_laserscan
       
       T* send_data = (T*)new_msg.data.data(); 
       
-      float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
+      float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::fromMeters( T(1) );
       
       cache_.row_limits.resize<T>(depth_msg->height);
       
       T* row_limits = cache_.row_limits;
+      
+      //float floor_dist=floor_dist_*unit_scaling;
+      //float overhead_dist=overhead_dist_*unit_scaling;
       
       //TODO: Even though this is only used for visualization, perhaps it should only reflect the relevant region, as determined by 'scan_height_'?
       //TODO: Generate the whole image only on demand?
@@ -393,6 +401,7 @@ namespace depthimage_to_laserscan
           //NOTE: Low priority optimizations: world_pnt.z is always 1, and could precompute unit_scaling/floor_dist_
           float z = world_pnt.z*ratio*unit_scaling; 
           //TODO: add check for out of range number for 16U, convert to 0?
+          //ROS_INFO_STREAM("[" << u << "," << v << "]: ratio=" << ratio << ", z=" << z);
           
           send_data[i] = z;
         }
@@ -505,7 +514,7 @@ namespace depthimage_to_laserscan
       
       
       //NOTE: this just needs to be bigger than any valid range, so range_max_ +1 should work fine
-      constexpr float big_val = 1000;//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max();
+      const T big_val = DepthTraits<T>::fromMeters(range_max_+1);//std::numeric_limits<float>::quiet_NaN(); //std::numeric_limits<T>::max();
 
       T* min_depths=cache.min_depths_buffer;
       
@@ -528,6 +537,8 @@ namespace depthimage_to_laserscan
               //T safe_min = safe_mins[u];
               T filtered_depth = (depth < safe_min && min_lim < depth) ? depth : big_val;
               min_depths[i] = filtered_depth;
+              
+              //ROS_INFO_STREAM("v=" << v << ", u=" << u << ", depth=" << depth << ", min_lim=" << min_lim << ", safe_min=" << safe_min << ", filtered_depth=" << filtered_depth);
             }
           }
 
@@ -571,21 +582,30 @@ namespace depthimage_to_laserscan
       
       }
       
+      T max_range= DepthTraits<T>::fromMeters(scan_msg->range_max);
       
       for(int u = 0; u < ranges_size; ++u)
       {
         T depth = min_depths[u];
-        float range = range_ratios[u]*depth;
+        float raw_range = range_ratios[u]*depth;  //NOTE: Not sure if it matters whether this is float or T
         
         int index = cache.indicies[u];
+        
+        ROS_INFO_STREAM("u=" << u << ", depth=" << depth << ", raw_range=" << raw_range << ", index=" << index);
 
-        if(range < scan_msg->range_max)
+        if(raw_range < max_range)
         {
-          float cur_ind_range = scan_msg->ranges[index];
+          float range = DepthTraits<T>::toMeters(raw_range);
+          float& cur_ind_range = scan_msg->ranges[index];
           
-          if(!(cur_ind_range < range))
+          ROS_INFO_STREAM("range=" << range << ", cur_ind_range=" << cur_ind_range);
+          
+          if(cur_ind_range < range)
           {
-            scan_msg->ranges[index] = range;
+          }
+          else
+          {
+            cur_ind_range = range;
           }
         }
       }

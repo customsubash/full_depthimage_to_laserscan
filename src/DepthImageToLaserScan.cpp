@@ -232,7 +232,7 @@ sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageTo
   {
     if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_16UC1)
     {
-     // convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_, image);
+      convert_new<uint16_t>(depth_msg, cam_model_, scan_msg, scan_height_, cache_);
     }
     else if (depth_msg->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
     {
