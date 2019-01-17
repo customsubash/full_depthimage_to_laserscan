@@ -264,13 +264,13 @@ namespace depthimage_to_laserscan
       
       cache_.indicies.resize(depth_msg->width);
       
-      ROS_INFO_STREAM("center_x=" << center_x << ", constant_x=" << constant_x << ", unit_scaling=" << unit_scaling);
+      //ROS_INFO_STREAM("center_x=" << center_x << ", constant_x=" << constant_x << ", unit_scaling=" << unit_scaling);
       for(int u = 0; u < depth_msg->width; ++u)
       {
         double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
         int index = (th - angle_min) / angle_increment;
         
-        ROS_INFO_STREAM("u=" << u << ", th=" << th << ", index=" << index);
+        //ROS_INFO_STREAM("u=" << u << ", th=" << th << ", index=" << index);
         
         cache_.indicies[u] = index;
       }
@@ -287,7 +287,7 @@ namespace depthimage_to_laserscan
         cv::Point3f world_pnt = cam_model_.projectPixelTo3dRay(pt);
         float ratio = std::sqrt(world_pnt.x*world_pnt.x + 1); //making use of the fact that z=1 and y is irrelevant
         cache_.range_ratios[u] = ratio;
-        ROS_INFO_STREAM("u=" << u << ", ratio=" << ratio);
+        //ROS_INFO_STREAM("u=" << u << ", ratio=" << ratio);
         
       }
       
@@ -591,14 +591,14 @@ namespace depthimage_to_laserscan
         
         int index = cache.indicies[u];
         
-        ROS_INFO_STREAM("u=" << u << ", depth=" << depth << ", raw_range=" << raw_range << ", index=" << index);
+        //ROS_INFO_STREAM("u=" << u << ", depth=" << depth << ", raw_range=" << raw_range << ", index=" << index);
 
         if(raw_range < max_range)
         {
           float range = DepthTraits<T>::toMeters(raw_range);
           float& cur_ind_range = scan_msg->ranges[index];
           
-          ROS_INFO_STREAM("range=" << range << ", cur_ind_range=" << cur_ind_range);
+          //ROS_INFO_STREAM("range=" << range << ", cur_ind_range=" << cur_ind_range);
           
           if(cur_ind_range < range)
           {
