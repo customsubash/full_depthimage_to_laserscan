@@ -38,13 +38,13 @@
 #include <sensor_msgs/LaserScan.h>
 #include <sensor_msgs/image_encodings.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <depthimage_to_laserscan/depth_traits.h>
+#include <full_depthimage_to_laserscan/depth_traits.h>
 #include <sstream>
 //#include <limits.h>
 //#include <math.h>
 #include <cmath>
 //#include <algorithm>
-#include <depthimage_to_laserscan/clean_camera_model.h>
+#include <full_depthimage_to_laserscan/clean_camera_model.h>
 #include <boost/make_shared.hpp>
 
 #include <ros/ros.h>
@@ -258,7 +258,7 @@ namespace full_depthimage_to_laserscan
       float center_y = cam_model_.cy();
       
       // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y) NOTE: should be able to just use meters, since the units cancels out, though the gains are probably negligible, if any
-      double unit_scaling = depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
+      double unit_scaling = DepthTraits<T>::toMeters( T(1) );
       float constant_x = unit_scaling / cam_model_.fx();
       float constant_y = unit_scaling / cam_model_.fy();
       
@@ -368,7 +368,7 @@ namespace full_depthimage_to_laserscan
       
       T* send_data = (T*)new_msg.data.data(); 
       
-      float unit_scaling=depthimage_to_laserscan::DepthTraits<T>::fromMeters( T(1) );
+      float unit_scaling=DepthTraits<T>::fromMeters( T(1) );
       
       cache_.row_limits.resize<T>(depth_msg->height);
       
@@ -435,7 +435,7 @@ namespace full_depthimage_to_laserscan
       float center_y = cam_model.cy();
 
       // Combine unit conversion (if necessary) with scaling by focal length for computing (X,Y)
-      double unit_scaling = depthimage_to_laserscan::DepthTraits<T>::toMeters( T(1) );
+      double unit_scaling = DepthTraits<T>::toMeters( T(1) );
       float constant_x = unit_scaling / cam_model.fx();
       float constant_y = unit_scaling / cam_model.fy();
       
@@ -455,10 +455,10 @@ namespace full_depthimage_to_laserscan
           double th = -atan2((double)(u - center_x) * constant_x, unit_scaling); // Atan2(x, z), but depth divides out
           int index = (th - scan_msg->angle_min) / scan_msg->angle_increment;
           
-          if (depthimage_to_laserscan::DepthTraits<T>::valid(depth)){ // Not NaN or Inf
+          if (DepthTraits<T>::valid(depth)){ // Not NaN or Inf
             // Calculate in XYZ
             double x = (u - center_x) * depth * constant_x;
-            double z = depthimage_to_laserscan::DepthTraits<T>::toMeters(depth);
+            double z = DepthTraits<T>::toMeters(depth);
             
             // Calculate actual distance
             r = sqrt(pow(x, 2.0) + pow(z, 2.0));

@@ -40,9 +40,9 @@
 #include <sensor_msgs/LaserScan.h>
 #include <boost/thread/mutex.hpp>
 #include <dynamic_reconfigure/server.h>
-#include <depthimage_to_laserscan/DepthConfig.h>
+#include <full_depthimage_to_laserscan/DepthConfig.h>
 
-#include <depthimage_to_laserscan/DepthImageToLaserScan.h>
+#include <full_depthimage_to_laserscan/DepthImageToLaserScan.h>
 
 
 namespace full_depthimage_to_laserscan
@@ -92,18 +92,18 @@ namespace full_depthimage_to_laserscan
      * @param level Dynamic Reconfigure level.
      * 
      */
-    void reconfigureCb(depthimage_to_laserscan::DepthConfig& config, uint32_t level);
+    void reconfigureCb(full_depthimage_to_laserscan::DepthConfig& config, uint32_t level);
     
     ros::NodeHandle pnh_; ///< Private nodehandle used to generate the transport hints in the connectCb.
     image_transport::ImageTransport it_; ///< Subscribes to synchronized Image CameraInfo pairs.
     image_transport::CameraSubscriber sub_; ///< Subscriber for image_transport
     image_transport::Publisher im_pub_;
     ros::Publisher pub_; ///< Publisher for output LaserScan messages
-    dynamic_reconfigure::Server<depthimage_to_laserscan::DepthConfig> srv_; ///< Dynamic reconfigure server
+    dynamic_reconfigure::Server<DepthConfig> srv_; ///< Dynamic reconfigure server
     
     boost::mutex config_mutex_;
     
-    depthimage_to_laserscan::DepthImageToLaserScan dtl_; ///< Instance of the DepthImageToLaserScan conversion class.
+    DepthImageToLaserScan dtl_; ///< Instance of the DepthImageToLaserScan conversion class.
     int approach_;
     boost::mutex connect_mutex_; ///< Prevents the connectCb and disconnectCb from being called until everything is initialized.
   };

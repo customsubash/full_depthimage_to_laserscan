@@ -39,7 +39,7 @@ DepthImageToLaserScanROS::DepthImageToLaserScanROS(ros::NodeHandle& n, ros::Node
   boost::mutex::scoped_lock lock(connect_mutex_);
   
   // Dynamic Reconfigure
-  dynamic_reconfigure::Server<depthimage_to_laserscan::DepthConfig>::CallbackType f;
+  dynamic_reconfigure::Server<full_depthimage_to_laserscan::DepthConfig>::CallbackType f;
   f = boost::bind(&DepthImageToLaserScanROS::reconfigureCb, this, _1, _2);
   srv_.setCallback(f);
   
@@ -108,7 +108,7 @@ void DepthImageToLaserScanROS::disconnectCb(const ros::SingleSubscriberPublisher
   }
 }
 
-void DepthImageToLaserScanROS::reconfigureCb(depthimage_to_laserscan::DepthConfig& config, uint32_t level){
+void DepthImageToLaserScanROS::reconfigureCb(full_depthimage_to_laserscan::DepthConfig& config, uint32_t level){
   boost::mutex::scoped_lock lock(config_mutex_);
   
     dtl_.set_scan_time(config.scan_time);

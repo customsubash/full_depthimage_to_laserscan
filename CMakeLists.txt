@@ -31,7 +31,7 @@ add_library(FullDepthImageToLaserScanNodelet src/DepthImageToLaserScanNodelet.cp
 target_link_libraries(FullDepthImageToLaserScanNodelet FullDepthImageToLaserScanROS ${catkin_LIBRARIES})
 
 add_executable(full_depthimage_to_laserscan src/depthimage_to_laserscan.cpp)
-target_link_libraries(full_depthimage_to_laserscan DepthImageToLaserScanROS ${catkin_LIBRARIES})
+target_link_libraries(full_depthimage_to_laserscan FullDepthImageToLaserScanROS ${catkin_LIBRARIES})
 
 if(CATKIN_ENABLE_TESTING)
   # Test the library
