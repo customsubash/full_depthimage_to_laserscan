@@ -31,11 +31,11 @@
  * Author: Chad Rockey
  */
 
-#include <depthimage_to_laserscan/DepthImageToLaserScanROS.h>
+#include <full_depthimage_to_laserscan/DepthImageToLaserScanROS.h>
 #include <nodelet/nodelet.h>
 
 
-namespace depthimage_to_laserscan
+namespace full_depthimage_to_laserscan
 {
 
 class DepthImageToLaserScanNodelet : public nodelet::Nodelet
@@ -57,5 +57,5 @@ private:
 }
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_DECLARE_CLASS(depthimage_to_laserscan, DepthImageToLaserScanNodelet, depthimage_to_laserscan::DepthImageToLaserScanNodelet, nodelet::Nodelet);
+PLUGINLIB_DECLARE_CLASS(depthimage_to_laserscan, DepthImageToLaserScanNodelet, full_depthimage_to_laserscan::DepthImageToLaserScanNodelet, nodelet::Nodelet);
 

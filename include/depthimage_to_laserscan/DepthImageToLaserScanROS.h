@@ -31,8 +31,8 @@
  * Author: Chad Rockey
  */
 
-#ifndef DEPTH_IMAGE_TO_LASERSCAN_ROS
-#define DEPTH_IMAGE_TO_LASERSCAN_ROS
+#ifndef FULL_DEPTH_IMAGE_TO_LASERSCAN_ROS
+#define FULL_DEPTH_IMAGE_TO_LASERSCAN_ROS
 
 #include <ros/ros.h>
 #include <image_transport/image_transport.h>
@@ -45,7 +45,7 @@
 #include <depthimage_to_laserscan/DepthImageToLaserScan.h>
 
 
-namespace depthimage_to_laserscan
+namespace full_depthimage_to_laserscan
 { 
   class DepthImageToLaserScanROS
   {

@@ -31,8 +31,8 @@
  * Author: Chad Rockey
  */
 
-#ifndef DEPTH_IMAGE_TO_LASERSCAN
-#define DEPTH_IMAGE_TO_LASERSCAN
+#ifndef FULL_DEPTH_IMAGE_TO_LASERSCAN
+#define FULL_DEPTH_IMAGE_TO_LASERSCAN
 
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/LaserScan.h>
@@ -51,7 +51,7 @@
 
 
 
-namespace depthimage_to_laserscan
+namespace full_depthimage_to_laserscan
 { 
   
   struct MultitypeVector

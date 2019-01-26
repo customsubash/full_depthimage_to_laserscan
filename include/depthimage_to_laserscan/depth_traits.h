@@ -31,13 +31,13 @@
  * Author: Chad Rockey
  */
 
-#ifndef DEPTH_IMAGE_TO_LASERSCAN_DEPTH_TRAITS
-#define DEPTH_IMAGE_TO_LASERSCAN_DEPTH_TRAITS
+#ifndef FULL_DEPTH_IMAGE_TO_LASERSCAN_DEPTH_TRAITS
+#define FULL_DEPTH_IMAGE_TO_LASERSCAN_DEPTH_TRAITS
 
 #include <algorithm>
 #include <limits>
 
-namespace depthimage_to_laserscan {
+namespace full_depthimage_to_laserscan {
 
 // Encapsulate differences between processing float and uint16_t depths
 template<typename T> struct DepthTraits {};

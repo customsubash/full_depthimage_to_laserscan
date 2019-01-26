@@ -1,7 +1,7 @@
-<library path="lib/libDepthImageToLaserScanNodelet">
+<library path="lib/libFullDepthImageToLaserScanNodelet">
 
-  <class name="depthimage_to_laserscan/DepthImageToLaserScanNodelet"
-	 type="depthimage_to_laserscan::DepthImageToLaserScanNodelet"
+  <class name="full_depthimage_to_laserscan/DepthImageToLaserScanNodelet"
+	 type="full_depthimage_to_laserscan::DepthImageToLaserScanNodelet"
 	 base_class_type="nodelet::Nodelet">
     <description>
       Nodelet to convert raw depth images to sensor_msgs/LaserScans.

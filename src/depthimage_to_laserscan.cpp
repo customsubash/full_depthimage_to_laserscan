@@ -31,14 +31,14 @@
  * Author: Chad Rockey
  */
 
-#include <depthimage_to_laserscan/DepthImageToLaserScanROS.h>
+#include <full_depthimage_to_laserscan/DepthImageToLaserScanROS.h>
 
 int main(int argc, char **argv){
   ros::init(argc, argv, "depthimage_to_laserscan");
   ros::NodeHandle n;
   ros::NodeHandle pnh("~");
   
-  depthimage_to_laserscan::DepthImageToLaserScanROS dtl(n, pnh);
+  full_depthimage_to_laserscan::DepthImageToLaserScanROS dtl(n, pnh);
   
   ros::spin();
 

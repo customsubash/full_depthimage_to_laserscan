@@ -1,6 +1,6 @@
 # http://ros.org/doc/groovy/api/catkin/html/user_guide/supposed.html
 cmake_minimum_required(VERSION 2.8)
-project(depthimage_to_laserscan)
+project(full_depthimage_to_laserscan)
 
 # Load catkin and all dependencies required for this package
 find_package(catkin REQUIRED dynamic_reconfigure image_geometry image_transport nodelet roscpp sensor_msgs)
@@ -11,28 +11,27 @@ generate_dynamic_reconfigure_options(cfg/Depth.cfg)
 
 catkin_package(
   INCLUDE_DIRS include
-  LIBRARIES DepthImageToLaserScan DepthImageToLaserScanROS DepthImageToLaserScanNodelet
+  LIBRARIES FullDepthImageToLaserScan FullDepthImageToLaserScanROS FullDepthImageToLaserScanNodelet
   CATKIN_DEPENDS dynamic_reconfigure image_geometry image_transport nodelet roscpp sensor_msgs
 )
 
 include_directories(include ${catkin_INCLUDE_DIRS})
-#add_compile_options(-std=c++11)
 
-add_library(DepthImageToLaserScan src/DepthImageToLaserScan.cpp)
-target_link_libraries(DepthImageToLaserScan ${catkin_LIBRARIES})
-target_compile_options(DepthImageToLaserScan PRIVATE -Wall -fopt-info-vec-optimized -ftree-vectorize  -ffast-math ) #  -ffast-math
-target_compile_options(DepthImageToLaserScan PUBLIC -std=c++11)
+add_library(FullDepthImageToLaserScan src/DepthImageToLaserScan.cpp)
+target_link_libraries(FullDepthImageToLaserScan ${catkin_LIBRARIES})
+target_compile_options(FullDepthImageToLaserScan PRIVATE -Wall -fopt-info-vec-optimized -ftree-vectorize  -ffast-math )
+target_compile_options(FullDepthImageToLaserScan PUBLIC -std=c++11)
 
 
-add_library(DepthImageToLaserScanROS src/DepthImageToLaserScanROS.cpp)
-add_dependencies(DepthImageToLaserScanROS ${PROJECT_NAME}_gencfg)
-target_link_libraries(DepthImageToLaserScanROS DepthImageToLaserScan ${catkin_LIBRARIES})
+add_library(FullDepthImageToLaserScanROS src/DepthImageToLaserScanROS.cpp)
+add_dependencies(FullDepthImageToLaserScanROS ${PROJECT_NAME}_gencfg)
+target_link_libraries(FullDepthImageToLaserScanROS FullDepthImageToLaserScan ${catkin_LIBRARIES})
 
-add_library(DepthImageToLaserScanNodelet src/DepthImageToLaserScanNodelet.cpp)
-target_link_libraries(DepthImageToLaserScanNodelet DepthImageToLaserScanROS ${catkin_LIBRARIES})
+add_library(FullDepthImageToLaserScanNodelet src/DepthImageToLaserScanNodelet.cpp)
+target_link_libraries(FullDepthImageToLaserScanNodelet FullDepthImageToLaserScanROS ${catkin_LIBRARIES})
 
-add_executable(depthimage_to_laserscan src/depthimage_to_laserscan.cpp)
-target_link_libraries(depthimage_to_laserscan DepthImageToLaserScanROS ${catkin_LIBRARIES})
+add_executable(full_depthimage_to_laserscan src/depthimage_to_laserscan.cpp)
+target_link_libraries(full_depthimage_to_laserscan DepthImageToLaserScanROS ${catkin_LIBRARIES})
 
 if(CATKIN_ENABLE_TESTING)
   # Test the library
@@ -44,7 +43,7 @@ endif()
 add_executable(test_dtl EXCLUDE_FROM_ALL test/depthimage_to_laserscan_rostest.cpp)
 
 # Install targets
-install(TARGETS DepthImageToLaserScan DepthImageToLaserScanROS DepthImageToLaserScanNodelet depthimage_to_laserscan
+install(TARGETS FullDepthImageToLaserScan FullDepthImageToLaserScanROS FullDepthImageToLaserScanNodelet full_depthimage_to_laserscan
 	RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 	LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 	ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})

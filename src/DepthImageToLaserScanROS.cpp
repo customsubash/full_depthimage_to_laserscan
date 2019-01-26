@@ -31,9 +31,9 @@
  * Author: Chad Rockey
  */
 
-#include <depthimage_to_laserscan/DepthImageToLaserScanROS.h>
+#include <full_depthimage_to_laserscan/DepthImageToLaserScanROS.h>
 
-using namespace depthimage_to_laserscan;
+using namespace full_depthimage_to_laserscan;
   
 DepthImageToLaserScanROS::DepthImageToLaserScanROS(ros::NodeHandle& n, ros::NodeHandle& pnh):pnh_(pnh), it_(n), srv_(pnh) {
   boost::mutex::scoped_lock lock(connect_mutex_);

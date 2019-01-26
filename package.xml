@@ -1,5 +1,5 @@
 <package>
-  <name>depthimage_to_laserscan</name>
+  <name>full_depthimage_to_laserscan</name>
   <version>1.0.7</version>
   <description>depthimage_to_laserscan</description>
   <maintainer email="chadrockey@gmail.com">Chad Rockey</maintainer>
