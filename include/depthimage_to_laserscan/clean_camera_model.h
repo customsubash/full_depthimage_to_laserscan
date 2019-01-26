@@ -3,7 +3,7 @@
 
 #include <image_geometry/pinhole_camera_model.h>
 
-
+//NOTE: originally used in egoyclindrical package; should be moved somewhere common
 //Inherits from PinholeCamerModel in order to access protected member function initRectificationMaps
         class CleanCameraModel : public image_geometry::PinholeCameraModel
         {
