@@ -19,7 +19,7 @@ include_directories(include ${catkin_INCLUDE_DIRS})
 
 add_library(FullDepthImageToLaserScan src/DepthImageToLaserScan.cpp)
 target_link_libraries(FullDepthImageToLaserScan ${catkin_LIBRARIES})
-target_compile_options(FullDepthImageToLaserScan PRIVATE -Wall -fopt-info-vec-optimized -ftree-vectorize  -ffast-math )
+target_compile_options(FullDepthImageToLaserScan PRIVATE -Wall -fopt-info-vec-optimized -ftree-vectorize  -fno-math-errno -funsafe-math-optimizations)
 target_compile_options(FullDepthImageToLaserScan PUBLIC -std=c++11)
 
 
@@ -33,14 +33,14 @@ target_link_libraries(FullDepthImageToLaserScanNodelet FullDepthImageToLaserScan
 add_executable(full_depthimage_to_laserscan src/depthimage_to_laserscan.cpp)
 target_link_libraries(full_depthimage_to_laserscan FullDepthImageToLaserScanROS ${catkin_LIBRARIES})
 
-if(CATKIN_ENABLE_TESTING)
-  # Test the library
-  catkin_add_gtest(libtest test/DepthImageToLaserScanTest.cpp)
-  target_link_libraries(libtest DepthImageToLaserScan ${catkin_LIBRARIES})
-endif()
-
-# add the test executable, keep it from being built by "make all"
-add_executable(test_dtl EXCLUDE_FROM_ALL test/depthimage_to_laserscan_rostest.cpp)
+# if(CATKIN_ENABLE_TESTING)
+#   # Test the library
+#   catkin_add_gtest(libtest test/DepthImageToLaserScanTest.cpp)
+#   target_link_libraries(libtest DepthImageToLaserScan ${catkin_LIBRARIES})
+# endif()
+# 
+# # add the test executable, keep it from being built by "make all"
+# add_executable(test_dtl EXCLUDE_FROM_ALL test/depthimage_to_laserscan_rostest.cpp)
 
 # Install targets
 install(TARGETS FullDepthImageToLaserScan FullDepthImageToLaserScanROS FullDepthImageToLaserScanNodelet full_depthimage_to_laserscan

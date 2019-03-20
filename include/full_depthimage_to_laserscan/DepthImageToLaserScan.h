@@ -481,10 +481,8 @@ namespace full_depthimage_to_laserscan
     }
     
     //We don't distinguish between infs and Nans
-    //Also currently ignores range_min_
-    //A number of things won't work for uint16 (currently): finding min ignores 0's; big_val is only big in meters; 
     template<typename T>
-    void __attribute__((optimize ("-ffast-math"))) convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
+    void convert_new(const sensor_msgs::ImageConstPtr& depth_msg, const image_geometry::PinholeCameraModel& cam_model, 
                                                                const sensor_msgs::LaserScanPtr& scan_msg, const int& scan_height, const ConversionCache& cache) const
     {
 //       // Use correct principal point from calibration

@@ -96,7 +96,6 @@ void DepthImageToLaserScan::updateCache()
   }
 }
 
-//TODO: Regenerate on reconfigure if distance parameters change
 void DepthImageToLaserScan::updateCache(const sensor_msgs::ImageConstPtr& depth_msg, const sensor_msgs::CameraInfoConstPtr& info_msg)
 {
   bool camera_params_changed=false;
@@ -157,34 +156,18 @@ void DepthImageToLaserScan::updateCache(const sensor_msgs::ImageConstPtr& depth_
   }
   
 
-  
+
 }
 
-sensor_msgs::LaserScanPtr __attribute__((optimize ("-ffast-math"))) DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
-      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::ImageConstPtr& image){
-  // Set camera model
-
+sensor_msgs::LaserScanPtr DepthImageToLaserScan::convert_msg(const sensor_msgs::ImageConstPtr& depth_msg,
+      const sensor_msgs::CameraInfoConstPtr& info_msg, int approach, sensor_msgs::ImageConstPtr& image)
+{
+  //Update cached variables based on current image
   updateCache(depth_msg, info_msg);
   image=cache_.limits;
   
-//   // Calculate angle_min and angle_max by measuring angles between the left ray, right ray, and optical center ray
-//   cv::Point2d raw_pixel_left(0, cam_model_.cy());
-//   cv::Point2d rect_pixel_left = cam_model_.rectifyPoint(raw_pixel_left);
-//   cv::Point3d left_ray = cam_model_.projectPixelTo3dRay(rect_pixel_left);
-//   
-//   cv::Point2d raw_pixel_right(depth_msg->width-1, cam_model_.cy());
-//   cv::Point2d rect_pixel_right = cam_model_.rectifyPoint(raw_pixel_right);
-//   cv::Point3d right_ray = cam_model_.projectPixelTo3dRay(rect_pixel_right);
-//   
-//   cv::Point2d raw_pixel_center(cam_model_.cx(), cam_model_.cy());
-//   cv::Point2d rect_pixel_center = cam_model_.rectifyPoint(raw_pixel_center);
-//   cv::Point3d center_ray = cam_model_.projectPixelTo3dRay(rect_pixel_center);
-//   
-//   double angle_max = angle_between_rays(left_ray, center_ray);
-//   double angle_min = -angle_between_rays(center_ray, right_ray); // Negative because the laserscan message expects an opposite rotation of that from the depth image
-  
   // Fill in laserscan message
-  sensor_msgs::LaserScanPtr scan_msg(new sensor_msgs::LaserScan());
+  sensor_msgs::LaserScanPtr scan_msg = boost::make_shared<sensor_msgs::LaserScan>();
   scan_msg->header = depth_msg->header;
   if(output_frame_id_.length() > 0){
     scan_msg->header.frame_id = output_frame_id_;
