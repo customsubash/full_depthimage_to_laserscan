@@ -1,15 +1,14 @@
 <package>
   <name>full_depthimage_to_laserscan</name>
-  <version>1.0.7</version>
-  <description>depthimage_to_laserscan</description>
-  <maintainer email="chadrockey@gmail.com">Chad Rockey</maintainer>
+  <version>0.1.0</version>
+  <description>The full_depthimage_to_laserscan package generates a laserscan from a depth image, similar to the depthimage_to_laserscan package. Due to significant optimization, it is capable of processing an entire depth image in less time than the original package required to process a few rows. It is also capable of filtering out points that lie outside of the specified range of heights.</description>
+  <maintainer email="jssmith@gatech.edu">Justin Smith</maintainer>
 
   <license>BSD</license>
 
-  <url type="website">http://ros.org/wiki/depthimage_to_laserscan</url>
-  <url type="bugtracker">https://github.com/ros-perception/depthimage_to_laserscan/issues</url>
-  <url type="repository">https://github.com/ros-perception/depthimage_to_laserscan</url>
-
+  <url type="repository">https://github.com/ivaROS/full_depthimage_to_laserscan</url>
+  
+  <!-- Original author -->
   <author>Chad Rockey</author>
 
   <buildtool_depend version_gte="0.5.68">catkin</buildtool_depend>
