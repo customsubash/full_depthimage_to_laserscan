@@ -7,6 +7,8 @@ ROS Wiki Page:
 http://www.ros.org/wiki/depthimage_to_laserscan
 
 The package is renamed to allow it to exist side-by-side with the original depthimage_to_laserscan package without any conflicts. A sample launch file for the turtlebot is included. 
+*Note:*
+The revision is added for noetic version of ROS that from the forked repo.
 
 ### Parameters and Getting it Working
 
