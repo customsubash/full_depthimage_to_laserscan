@@ -57,5 +57,5 @@ private:
 }
 
 #include <pluginlib/class_list_macros.h>
-PLUGINLIB_DECLARE_CLASS(depthimage_to_laserscan, DepthImageToLaserScanNodelet, full_depthimage_to_laserscan::DepthImageToLaserScanNodelet, nodelet::Nodelet);
+PLUGINLIB_EXPORT_CLASS(full_depthimage_to_laserscan::DepthImageToLaserScanNodelet, nodelet::Nodelet);
 
