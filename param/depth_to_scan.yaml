@@ -1,0 +1,7 @@
+scan_time: 0.1428
+range_min: 0.45
+range_max: 6.0
+floor_dist: 0.25
+overhead_dist: 0.15
+scan_height: 400
+output_frame_id: camera_link

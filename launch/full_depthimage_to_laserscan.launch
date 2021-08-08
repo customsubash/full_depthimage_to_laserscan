@@ -1,0 +1,13 @@
+<launch>
+
+    <arg name="depth_image" default="/camera/depth/image_rect_raw"/>
+    <arg name="scan" default="scan_depth"/>
+    
+    <node pkg="nodelet" type="nodelet" name="full_depthimage_to_laserscan"
+          args="standalone full_depthimage_to_laserscan/DepthImageToLaserScanNodelet"  output="screen" required="true">
+      <rosparam file="$(find full_depthimage_to_laserscan)/param/depth_to_scan.yaml" command="load"/>
+      <remap from="image" to="$(arg depth_image)"/>
+      <remap from="scan" to="$(arg scan)"/>
+    </node>
+
+</launch>
