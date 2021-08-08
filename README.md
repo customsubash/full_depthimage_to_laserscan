@@ -13,7 +13,7 @@ Extra revision is added for noetic version of ROS than that from the forked repo
 
 ### Parameters and Getting it Working
 
-You will need to change the `depth_image` arg to match yours (the camera info topic is determined automatically based on the depth image's topic). The `scan` arg specifies the topic that the generated laserscan will be published on. The nodelet expects a rectified depth image, though the raw image can work as long as the camera's distortion is minimal; YMMV. Some pdeth image cllision avoidance or navigation strategies use decimated depth maps for faster processing. Here, it doesn't make much difference since computation time scales sublinearly with the number of pixels.
+You will need to change the `depth_image` arg to match yours (the camera info topic is determined automatically based on the depth image's topic). The `scan` arg specifies the topic that the generated laserscan will be published on. The nodelet expects a rectified depth image, though the raw image can work as long as the camera's distortion is minimal; YMMV. Some deeth image collision avoidance or navigation strategies use decimated depth maps for faster processing. Here, it doesn't make much difference since computation time scales sublinearly with the number of pixels.
 
 `scan_height`: param determines how much of the images is used when generating the laserscan; it can be set  to anything from 1 to (image_height-1). There's no compelling reason to deviate from using the largest value. <BR>
 `output_frame_id`: set to match the frame_id of your depth camera- not the camera's optical frame_id! <BR>
